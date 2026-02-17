@@ -49,14 +49,14 @@ const Footer = () => {
       {/* Newsletter Section */}
       <div className="newsletter-section">
         <div className="newsletter-content">
-          <div className="newsletter-text">
+          {/* <div className="newsletter-text">
             <h3 className="newsletter-title">Stay Updated</h3>
             <p className="newsletter-description">
               Subscribe to our newsletter for the latest movie releases, exclusive content, and special offers.
             </p>
-          </div>
+          </div> */}
           
-          <form onSubmit={handleSubscribe} className="newsletter-form">
+          {/* <form onSubmit={handleSubscribe} className="newsletter-form">
             <div className="form-group">
               <input
                 type="email"
@@ -78,7 +78,7 @@ const Footer = () => {
             <p className="form-note">
               By subscribing, you agree to our Privacy Policy and consent to receive updates.
             </p>
-          </form>
+          </form> */}
         </div>
       </div>
 

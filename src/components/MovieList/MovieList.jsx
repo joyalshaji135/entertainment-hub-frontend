@@ -1,19 +1,27 @@
-import React, { useState } from 'react';
+// components/MovieList/MovieList.jsx
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import './MovieList.css';
 
 const MovieList = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [sortBy, setSortBy] = useState('popular');
+  const [movies, setMovies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [visibleMovies, setVisibleMovies] = useState(12);
+  const { isAuthenticated } = useAuth();
 
   const categories = [
     { id: 'all', label: 'All Movies', icon: '🎬' },
-    { id: 'action', label: 'Action', icon: '💥' },
-    { id: 'comedy', label: 'Comedy', icon: '😂' },
-    { id: 'drama', label: 'Drama', icon: '🎭' },
-    { id: 'scifi', label: 'Sci-Fi', icon: '🚀' },
-    { id: 'horror', label: 'Horror', icon: '👻' },
-    { id: 'romance', label: 'Romance', icon: '❤️' },
-    { id: 'animation', label: 'Animation', icon: '🐭' },
+    { id: 'Action', label: 'Action', icon: '💥' },
+    { id: 'Comedy', label: 'Comedy', icon: '😂' },
+    { id: 'Drama', label: 'Drama', icon: '🎭' },
+    { id: 'Crime', label: 'Crime', icon: '🔫' },
+    { id: 'Biography', label: 'Biography', icon: '📖' },
+    { id: 'History', label: 'History', icon: '🏛️' },
+    { id: 'Adventure', label: 'Adventure', icon: '🗺️' },
   ];
 
   const sortOptions = [
@@ -21,180 +29,142 @@ const MovieList = () => {
     { id: 'rating', label: 'Highest Rated' },
     { id: 'newest', label: 'Newest First' },
     { id: 'oldest', label: 'Oldest First' },
+    { id: 'rank', label: 'Top Ranked' },
   ];
 
-  const movies = [
-    {
-      id: 1,
-      title: "The Matrix Resurrections",
-      year: 2021,
-      rating: 5.7,
-      duration: "2h 28m",
-      genre: ["Action", "Sci-Fi"],
-      description: "Return to a world of two realities: one, everyday life; the other, what lies behind it.",
-      image: "https://images.unsplash.com/photo-1489599809516-9827b6d1cf13?w=400",
-      isFeatured: true,
-      isNew: true
-    },
-    {
-      id: 2,
-      title: "Everything Everywhere All at Once",
-      year: 2022,
-      rating: 7.8,
-      duration: "2h 19m",
-      genre: ["Action", "Adventure", "Comedy"],
-      description: "An aging Chinese immigrant is swept up in an insane adventure.",
-      image: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400",
-      isFeatured: false,
-      isNew: true
-    },
-    {
-      id: 3,
-      title: "Parasite",
-      year: 2019,
-      rating: 8.6,
-      duration: "2h 12m",
-      genre: ["Comedy", "Drama", "Thriller"],
-      description: "Greed and class discrimination threaten the newly formed symbiotic relationship.",
-      image: "https://images.unsplash.com/photo-1489599809516-9827b6d1cf13?w=400",
-      isFeatured: true,
-      isNew: false
-    },
-    {
-      id: 4,
-      title: "Interstellar",
-      year: 2014,
-      rating: 8.6,
-      duration: "2h 49m",
-      genre: ["Adventure", "Drama", "Sci-Fi"],
-      description: "A team of explorers travel through a wormhole in space.",
-      image: "https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=400",
-      isFeatured: false,
-      isNew: false
-    },
-    {
-      id: 5,
-      title: "Inception",
-      year: 2010,
-      rating: 8.8,
-      duration: "2h 28m",
-      genre: ["Action", "Sci-Fi", "Thriller"],
-      description: "A thief who steals corporate secrets through dream-sharing technology.",
-      image: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400",
-      isFeatured: true,
-      isNew: false
-    },
-    {
-      id: 6,
-      title: "The Dark Knight",
-      year: 2008,
-      rating: 9.0,
-      duration: "2h 32m",
-      genre: ["Action", "Crime", "Drama"],
-      description: "Batman sets out to dismantle the remaining criminal organizations.",
-      image: "https://images.unsplash.com/photo-1531259683007-016a7b628fc3?w=400",
-      isFeatured: true,
-      isNew: false
-    },
-    {
-      id: 7,
-      title: "Avengers: Infinity War",
-      year: 2018,
-      rating: 8.4,
-      duration: "2h 29m",
-      genre: ["Action", "Adventure", "Sci-Fi"],
-      description: "The Avengers and their allies must be willing to sacrifice all.",
-      image: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400",
-      isFeatured: false,
-      isNew: false
-    },
-    {
-      id: 8,
-      title: "The Shawshank Redemption",
-      year: 1994,
-      rating: 9.3,
-      duration: "2h 22m",
-      genre: ["Drama"],
-      description: "Two imprisoned men bond over a number of years.",
-      image: "https://images.unsplash.com/photo-1489599809516-9827b6d1cf13?w=400",
-      isFeatured: true,
-      isNew: false
-    },
-    {
-      id: 9,
-      title: "Pulp Fiction",
-      year: 1994,
-      rating: 8.9,
-      duration: "2h 34m",
-      genre: ["Crime", "Drama"],
-      description: "The lives of two mob hitmen, a boxer, and a pair of diner bandits.",
-      image: "https://images.unsplash.com/photo-1531259683007-016a7b628fc3?w=400",
-      isFeatured: false,
-      isNew: false
-    },
-    {
-      id: 10,
-      title: "The Godfather",
-      year: 1972,
-      rating: 9.2,
-      duration: "2h 55m",
-      genre: ["Crime", "Drama"],
-      description: "An organized crime dynasty's aging patriarch transfers control to his son.",
-      image: "https://images.unsplash.com/photo-1446776653964-20c1d3a81b06?w=400",
-      isFeatured: true,
-      isNew: false
-    },
-    {
-      id: 11,
-      title: "Spirited Away",
-      year: 2001,
-      rating: 8.6,
-      duration: "2h 5m",
-      genre: ["Animation", "Adventure", "Family"],
-      description: "During her family's move to the suburbs, a sullen 10-year-old girl wanders into a world ruled by gods, witches, and spirits.",
-      image: "https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=400",
-      isFeatured: false,
-      isNew: false
-    },
-    {
-      id: 12,
-      title: "Joker",
-      year: 2019,
-      rating: 8.4,
-      duration: "2h 2m",
-      genre: ["Crime", "Drama", "Thriller"],
-      description: "A mentally troubled stand-up comedian embarks on a downward spiral.",
-      image: "https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400",
-      isFeatured: true,
-      isNew: false
+  useEffect(() => {
+    fetchMovies();
+  }, []);
+
+  const fetchMovies = async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('https://imdb-top-100-movies.p.rapidapi.com/', {
+        method: 'GET',
+        headers: {
+          'x-rapidapi-host': 'imdb-top-100-movies.p.rapidapi.com',
+          'x-rapidapi-key': '042319157cmsh7c7ddfec2a8370bp186c32jsn0fb395b37716'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch movies');
+      }
+
+      const data = await response.json();
+      setMovies(data);
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching movies:', err);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const filteredMovies = movies.filter(movie => {
-    if (selectedCategory === 'all') return true;
-    return movie.genre.includes(selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1));
-  });
+  const filterMoviesByGenre = (movies, genre) => {
+    if (genre === 'all') return movies;
+    return movies.filter(movie => 
+      movie.genre && movie.genre.includes(genre)
+    );
+  };
 
-  const sortedMovies = [...filteredMovies].sort((a, b) => {
-    switch(sortBy) {
+  const sortMovies = (movies, sortType) => {
+    const sorted = [...movies];
+    switch(sortType) {
       case 'rating':
-        return b.rating - a.rating;
+        return sorted.sort((a, b) => parseFloat(b.rating) - parseFloat(a.rating));
       case 'newest':
-        return b.year - a.year;
+        return sorted.sort((a, b) => b.year - a.year);
       case 'oldest':
-        return a.year - b.year;
+        return sorted.sort((a, b) => a.year - b.year);
+      case 'rank':
+        return sorted.sort((a, b) => a.rank - b.rank);
       case 'popular':
       default:
-        return (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0);
+        return sorted; // Keep original order (IMDb rank)
     }
-  });
+  };
+
+  const filteredMovies = filterMoviesByGenre(movies, selectedCategory);
+  const sortedMovies = sortMovies(filteredMovies, sortBy);
+  const displayedMovies = sortedMovies.slice(0, visibleMovies);
+
+  const handleLoadMore = () => {
+    setVisibleMovies(prev => prev + 12);
+  };
+
+  const handleAddToWatchlist = (movie, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isAuthenticated) {
+      // You can show a login prompt or redirect
+      alert('Please login to add movies to watchlist');
+      return;
+    }
+
+    const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
+    
+    // Check if movie is already in watchlist
+    const isInWatchlist = watchlist.some(item => item.id === movie.id);
+    
+    if (isInWatchlist) {
+      // Remove from watchlist
+      const updatedWatchlist = watchlist.filter(item => item.id !== movie.id);
+      localStorage.setItem('watchlist', JSON.stringify(updatedWatchlist));
+      alert('Removed from watchlist');
+    } else {
+      // Add to watchlist
+      watchlist.push({
+        id: movie.id,
+        title: movie.title,
+        image: movie.image,
+        rating: movie.rating,
+        year: movie.year,
+        rank: movie.rank
+      });
+      localStorage.setItem('watchlist', JSON.stringify(updatedWatchlist));
+      alert('Added to watchlist');
+    }
+  };
+
+  const checkInWatchlist = (movieId) => {
+    const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
+    return watchlist.some(item => item.id === movieId);
+  };
+
+  if (loading) {
+    return (
+      <div className="movie-list-loading">
+        <div className="loading-spinner"></div>
+        <p>Loading amazing movies...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="movie-list-error">
+        <div className="error-icon">🎬</div>
+        <h3>Oops! Something went wrong</h3>
+        <p>{error}</p>
+        <button onClick={fetchMovies} className="retry-btn">
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="movie-list-container">
       <div className="list-header">
         <div className="header-content">
           <h2 className="list-title">Browse Movies</h2>
-          <p className="list-subtitle">Discover amazing movies from our collection</p>
+          <p className="list-subtitle">
+            Discover {movies.length} amazing movies from our collection
+          </p>
         </div>
         
         <div className="list-controls">
@@ -225,79 +195,111 @@ const MovieList = () => {
           >
             <span className="category-icon">{category.icon}</span>
             <span className="category-label">{category.label}</span>
+            {selectedCategory === category.id && (
+              <span className="category-count">
+                ({filterMoviesByGenre(movies, category.id).length})
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       <div className="movies-grid">
-        {sortedMovies.map(movie => (
-          <div key={movie.id} className="movie-card">
-            <div className="movie-card-inner">
-              <div className="movie-image">
-                <img src={movie.image} alt={movie.title} />
-                <div className="image-overlay">
-                  <button className="play-overlay-btn">
-                    <span className="play-icon">▶</span>
-                  </button>
-                </div>
-                
-                {movie.isNew && (
-                  <div className="new-badge">NEW</div>
-                )}
-                
-                {movie.isFeatured && (
-                  <div className="featured-badge">FEATURED</div>
-                )}
-              </div>
-              
-              <div className="movie-info">
-                <div className="movie-header">
-                  <h3 className="movie-title">{movie.title}</h3>
-                  <div className="movie-year">{movie.year}</div>
-                </div>
-                
-                <div className="movie-meta">
-                  <div className="movie-rating">
-                    <span className="star">⭐</span>
-                    <span className="rating-value">{movie.rating}</span>
+        {displayedMovies.map((movie, index) => (
+          <Link 
+            to={`/movie/${movie.id}`} 
+            key={movie.id} 
+            className="movie-card-link"
+            style={{ '--animation-order': index }}
+          >
+            <div className="movie-card">
+              <div className="movie-card-inner">
+                <div className="movie-image">
+                  <img 
+                    src={movie.image} 
+                    alt={movie.title}
+                    loading="lazy"
+                  />
+                  <div className="image-overlay">
+                    <button className="play-overlay-btn">
+                      <span className="play-icon">▶</span>
+                    </button>
                   </div>
-                  <div className="movie-duration">{movie.duration}</div>
+                  
+                  {movie.rank <= 10 && (
+                    <div className="top-badge">TOP {movie.rank}</div>
+                  )}
+                  
+                  {movie.year >= 2023 && (
+                    <div className="new-badge">NEW</div>
+                  )}
                 </div>
                 
-                <div className="movie-genres">
-                  {movie.genre.map((genre, index) => (
-                    <span key={index} className="genre-tag">{genre}</span>
-                  ))}
-                </div>
-                
-                <p className="movie-description">{movie.description}</p>
-                
-                <div className="movie-actions">
-                  <button className="watch-btn">
-                    <span className="btn-icon">▶</span>
-                    Watch Now
-                  </button>
-                  <button className="watchlist-btn">
-                    <span className="btn-icon">+</span>
-                    Watchlist
-                  </button>
-                  <button className="details-btn">
-                    <span className="btn-icon">ℹ️</span>
-                    Details
-                  </button>
+                <div className="movie-info">
+                  <div className="movie-header">
+                    <h3 className="movie-title">{movie.title}</h3>
+                    <div className="movie-year">{movie.year}</div>
+                  </div>
+                  
+                  <div className="movie-meta">
+                    <div className="movie-rating">
+                      <span className="star">⭐</span>
+                      <span className="rating-value">{movie.rating}</span>
+                    </div>
+                    <div className="movie-rank">#{movie.rank}</div>
+                  </div>
+                  
+                  <div className="movie-genres">
+                    {movie.genre && movie.genre.slice(0, 3).map((genre, index) => (
+                      <span key={index} className="genre-tag">{genre}</span>
+                    ))}
+                  </div>
+                  
+                  <p className="movie-description">
+                    {movie.description && movie.description.length > 100
+                      ? `${movie.description.substring(0, 100)}...`
+                      : movie.description}
+                  </p>
+                  
+                  <div className="movie-actions">
+                    <button 
+                      className="watch-btn"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        // Handle watch now
+                      }}
+                    >
+                      <span className="btn-icon">▶</span>
+                      Watch Now
+                    </button>
+                    <button 
+                      className={`watchlist-btn ${checkInWatchlist(movie.id) ? 'in-watchlist' : ''}`}
+                      onClick={(e) => handleAddToWatchlist(movie, e)}
+                    >
+                      <span className="btn-icon">
+                        {checkInWatchlist(movie.id) ? '✓' : '+'}
+                      </span>
+                      {checkInWatchlist(movie.id) ? 'In List' : 'Watchlist'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
-      <div className="load-more">
-        <button className="load-more-btn">
-          Load More Movies
-          <span className="load-icon">↓</span>
-        </button>
-      </div>
+      {visibleMovies < filteredMovies.length && (
+        <div className="load-more">
+          <button onClick={handleLoadMore} className="load-more-btn">
+            Load More Movies
+            <span className="load-icon">↓</span>
+          </button>
+          <p className="load-more-info">
+            Showing {displayedMovies.length} of {filteredMovies.length} movies
+          </p>
+        </div>
+      )}
     </div>
   );
 };

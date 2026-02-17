@@ -1,341 +1,395 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import './WishlistPage.css';
+// pages/WishList/WishListPage.jsx
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import './WishListPage.css';
 
-const WishlistPage = () => {
-  const [wishlist, setWishlist] = useState([
-    {
-      id: 1,
-      title: "Cyberpunk 2077: Phantom Liberty",
-      developer: "CD Projekt Red",
-      price: 29.99,
-      originalPrice: 39.99,
-      discount: 25,
-      cover: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400",
-      platforms: ["PC", "PS5", "Xbox Series X"],
-      genre: ["RPG", "Action"],
-      releaseDate: "2023-09-26",
-      isOnSale: true,
-      isReleased: true
-    },
-    {
-      id: 2,
-      title: "Final Fantasy XVI",
-      developer: "Square Enix",
-      price: 69.99,
-      originalPrice: 69.99,
-      discount: 0,
-      cover: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400",
-      platforms: ["PS5"],
-      genre: ["RPG", "Action"],
-      releaseDate: "2023-06-22",
-      isOnSale: false,
-      isReleased: true
-    },
-    {
-      id: 3,
-      title: "Starfield",
-      developer: "Bethesda Game Studios",
-      price: 69.99,
-      originalPrice: 69.99,
-      discount: 0,
-      cover: "https://images.unsplash.com/photo-1593305841991-05c297ba4575?w=400",
-      platforms: ["PC", "Xbox Series X"],
-      genre: ["RPG", "Sci-Fi"],
-      releaseDate: "2023-09-06",
-      isOnSale: false,
-      isReleased: true
-    },
-    {
-      id: 4,
-      title: "Marvel's Spider-Man 2",
-      developer: "Insomniac Games",
-      price: 69.99,
-      originalPrice: 69.99,
-      discount: 10,
-      cover: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400",
-      platforms: ["PS5"],
-      genre: ["Action", "Adventure"],
-      releaseDate: "2023-10-20",
-      isOnSale: true,
-      isReleased: true
-    },
-    {
-      id: 5,
-      title: "Alan Wake 2",
-      developer: "Remedy Entertainment",
-      price: 49.99,
-      originalPrice: 59.99,
-      discount: 17,
-      cover: "https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400",
-      platforms: ["PC", "PS5", "Xbox Series X"],
-      genre: ["Survival", "Horror"],
-      releaseDate: "2023-10-27",
-      isOnSale: true,
-      isReleased: true
-    },
-    {
-      id: 6,
-      title: "Dragon's Dogma 2",
-      developer: "Capcom",
-      price: 69.99,
-      originalPrice: 69.99,
-      discount: 0,
-      cover: "https://images.unsplash.com/photo-1593305841991-05c297ba4575?w=400",
-      platforms: ["PC", "PS5", "Xbox Series X"],
-      genre: ["RPG", "Action"],
-      releaseDate: "2024-03-22",
-      isOnSale: false,
-      isReleased: false
+const WishListPage = () => {
+  const [wishlist, setWishlist] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [filterType, setFilterType] = useState('all');
+  const [sortBy, setSortBy] = useState('recent');
+  
+  const { user, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+
+  // Fetch wishlist on component mount
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
     }
-  ]);
+    fetchWishlist();
+  }, [isAuthenticated, navigate]);
 
-  const [sortBy, setSortBy] = useState('date-added');
-  const [filterBy, setFilterBy] = useState('all');
+  const fetchWishlist = async () => {
+    setLoading(true);
+    setError(null);
 
-  const handleRemoveFromWishlist = (id) => {
-    setWishlist(wishlist.filter(game => game.id !== id));
-    alert('Removed from wishlist');
-  };
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      const response = await fetch('http://localhost:5000/wish-list/get', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'userId': user?._id || user?.id
+        }
+      });
 
-  const handleMoveToCart = (game) => {
-    alert(`Added "${game.title}" to cart!`);
-    // In real app, this would add to cart
-  };
-
-  const getTotalSavings = () => {
-    return wishlist.reduce((total, game) => {
-      if (game.isOnSale && game.discount > 0) {
-        const savings = ((game.originalPrice - game.price) / game.originalPrice) * 100;
-        return total + savings;
+      if (!response.ok) {
+        throw new Error('Failed to fetch wishlist');
       }
-      return total;
-    }, 0).toFixed(2);
+
+      const data = await response.json();
+      
+      // Handle different response structures
+      if (data.data) {
+        setWishlist(data.data);
+      } else if (Array.isArray(data)) {
+        setWishlist(data);
+      } else {
+        setWishlist([]);
+      }
+    } catch (err) {
+      setError(err.message);
+      console.error('Error fetching wishlist:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const getTotalPrice = () => {
-    return wishlist.reduce((total, game) => total + game.price, 0).toFixed(2);
+  const handleRemoveItem = async (itemId) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      const response = await fetch(`http://localhost:5000/wish-list/remove/${itemId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'userId': user?._id || user?.id
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to remove item');
+      }
+
+      // Update local state
+      setWishlist(prev => prev.filter(item => item._id !== itemId));
+      setSelectedItems(prev => prev.filter(id => id !== itemId));
+      
+      // Show success message
+      alert('Item removed from wishlist');
+    } catch (err) {
+      console.error('Error removing item:', err);
+      alert('Failed to remove item. Please try again.');
+    }
   };
 
+  const handleRemoveSelected = async () => {
+    if (selectedItems.length === 0) return;
+    
+    if (window.confirm(`Remove ${selectedItems.length} item(s) from wishlist?`)) {
+      try {
+        const token = localStorage.getItem('authToken');
+        
+        // Remove items one by one (or you could create a batch endpoint)
+        for (const itemId of selectedItems) {
+          await fetch(`http://localhost:5000/wish-list/remove/${itemId}`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`,
+              'userId': user?._id || user?.id
+            }
+          });
+        }
+
+        // Update local state
+        setWishlist(prev => prev.filter(item => !selectedItems.includes(item._id)));
+        setSelectedItems([]);
+        
+        alert('Selected items removed from wishlist');
+      } catch (err) {
+        console.error('Error removing items:', err);
+        alert('Failed to remove some items. Please try again.');
+      }
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedItems.length === wishlist.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(wishlist.map(item => item._id));
+    }
+  };
+
+  const handleSelectItem = (itemId) => {
+    setSelectedItems(prev => 
+      prev.includes(itemId) 
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  const handleAddToCart = (item) => {
+    // Implement add to cart functionality
+    alert(`Added ${item.title || item.name} to cart`);
+  };
+
+  const handleShareWishlist = () => {
+    const wishlistData = {
+      items: wishlist.map(item => ({
+        title: item.title || item.name,
+        type: item.type
+      })),
+      count: wishlist.length
+    };
+
+    if (navigator.share) {
+      navigator.share({
+        title: 'My Wishlist',
+        text: `Check out my wishlist with ${wishlist.length} items!`,
+        url: window.location.href
+      });
+    } else {
+      navigator.clipboard.writeText(JSON.stringify(wishlistData, null, 2));
+      alert('Wishlist data copied to clipboard!');
+    }
+  };
+
+  // Filter and sort wishlist
   const getFilteredAndSortedWishlist = () => {
     let filtered = [...wishlist];
 
-    // Apply filters
-    if (filterBy === 'on-sale') {
-      filtered = filtered.filter(game => game.isOnSale);
-    } else if (filterBy === 'released') {
-      filtered = filtered.filter(game => game.isReleased);
-    } else if (filterBy === 'upcoming') {
-      filtered = filtered.filter(game => !game.isReleased);
+    // Filter by type
+    if (filterType !== 'all') {
+      filtered = filtered.filter(item => 
+        item.type?.toLowerCase() === filterType.toLowerCase()
+      );
     }
 
-    // Apply sorting
-    switch(sortBy) {
-      case 'price-low':
-        filtered.sort((a, b) => a.price - b.price);
+    // Sort
+    switch (sortBy) {
+      case 'recent':
+        filtered.sort((a, b) => new Date(b.addedAt || 0) - new Date(a.addedAt || 0));
         break;
-      case 'price-high':
-        filtered.sort((a, b) => b.price - a.price);
+      case 'oldest':
+        filtered.sort((a, b) => new Date(a.addedAt || 0) - new Date(b.addedAt || 0));
         break;
-      case 'discount':
-        filtered.sort((a, b) => b.discount - a.discount);
+      case 'name':
+        filtered.sort((a, b) => (a.title || a.name || '').localeCompare(b.title || b.name || ''));
         break;
-      case 'release-date':
-        filtered.sort((a, b) => new Date(b.releaseDate) - new Date(a.releaseDate));
+      case 'type':
+        filtered.sort((a, b) => (a.type || '').localeCompare(b.type || ''));
         break;
-      case 'date-added':
       default:
-        // Keep original order (most recently added first)
         break;
     }
 
     return filtered;
   };
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    
-    if (date > now) {
-      const diffTime = date - now;
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return `In ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
-    }
-    
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
   const filteredWishlist = getFilteredAndSortedWishlist();
+
+  // Get unique types for filter
+  const itemTypes = ['all', ...new Set(wishlist.map(item => item.type).filter(Boolean))];
+
+  if (loading) {
+    return (
+      <div className="wishlist-loading">
+        <div className="loading-spinner-large"></div>
+        <p>Loading your wishlist...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="wishlist-error">
+        <div className="error-icon">❤️</div>
+        <h2>Oops! Something went wrong</h2>
+        <p>{error}</p>
+        <button onClick={fetchWishlist} className="retry-btn">
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="wishlist-page">
-      <div className="wishlist-container">
-        {/* Header */}
-        <div className="wishlist-header">
-          <div className="header-content">
-            <h1 className="page-title">My Wishlist</h1>
-            <p className="page-subtitle">
-              Track games you want to play and get notified when they go on sale
-            </p>
-          </div>
-          <div className="header-stats">
-            <div className="stat-card">
-              <div className="stat-icon">🎮</div>
-              <div className="stat-content">
-                <div className="stat-number">{wishlist.length}</div>
-                <div className="stat-label">Games</div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">💰</div>
-              <div className="stat-content">
-                <div className="stat-number">${getTotalPrice()}</div>
-                <div className="stat-label">Total Value</div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">🎁</div>
-              <div className="stat-content">
-                <div className="stat-number">{getTotalSavings()}%</div>
-                <div className="stat-label">Potential Savings</div>
-              </div>
-            </div>
-          </div>
+      {/* Hero Banner */}
+      <div className="wishlist-hero">
+        <div className="hero-content">
+          <h1 className="hero-title">My Wishlist</h1>
+          <p className="hero-subtitle">
+            {wishlist.length} {wishlist.length === 1 ? 'item' : 'items'} saved for later
+          </p>
         </div>
+      </div>
 
-        {/* Controls */}
-        <div className="wishlist-controls">
-          <div className="controls-left">
-            <div className="filter-group">
-              <span className="filter-label">Sort by:</span>
-              <select 
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="sort-select"
-              >
-                <option value="date-added">Date Added</option>
-                <option value="price-low">Price: Low to High</option>
-                <option value="price-high">Price: High to Low</option>
-                <option value="discount">Discount %</option>
-                <option value="release-date">Release Date</option>
-              </select>
-            </div>
-            
-            <div className="filter-group">
-              <span className="filter-label">Filter:</span>
-              <div className="filter-buttons">
-                <button 
-                  className={`filter-btn ${filterBy === 'all' ? 'active' : ''}`}
-                  onClick={() => setFilterBy('all')}
-                >
-                  All Games
-                </button>
-                <button 
-                  className={`filter-btn ${filterBy === 'on-sale' ? 'active' : ''}`}
-                  onClick={() => setFilterBy('on-sale')}
-                >
-                  On Sale
-                </button>
-                <button 
-                  className={`filter-btn ${filterBy === 'released' ? 'active' : ''}`}
-                  onClick={() => setFilterBy('released')}
-                >
-                  Released
-                </button>
-                <button 
-                  className={`filter-btn ${filterBy === 'upcoming' ? 'active' : ''}`}
-                  onClick={() => setFilterBy('upcoming')}
-                >
-                  Upcoming
-                </button>
-              </div>
-            </div>
+      <div className="wishlist-container">
+        {/* Header with actions */}
+        <div className="wishlist-header">
+          <div className="header-left">
+            <h2 className="section-title">Saved Items</h2>
+            {wishlist.length > 0 && (
+              <span className="item-count">{filteredWishlist.length} items</span>
+            )}
           </div>
 
-          <div className="controls-right">
-            <button className="clear-all-btn" onClick={() => setWishlist([])}>
-              Clear All
+          <div className="header-right">
+            <button 
+              className="share-btn"
+              onClick={handleShareWishlist}
+              disabled={wishlist.length === 0}
+            >
+              <span className="btn-icon">📤</span>
+              Share Wishlist
             </button>
           </div>
         </div>
 
+        {/* Filters and Controls */}
+        {wishlist.length > 0 && (
+          <div className="wishlist-controls">
+            <div className="controls-left">
+              <label className="checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={selectedItems.length === wishlist.length && wishlist.length > 0}
+                  onChange={handleSelectAll}
+                />
+                <span className="checkmark"></span>
+                Select All
+              </label>
+              
+              {selectedItems.length > 0 && (
+                <button 
+                  className="remove-selected-btn"
+                  onClick={handleRemoveSelected}
+                >
+                  <span className="btn-icon">🗑️</span>
+                  Remove Selected ({selectedItems.length})
+                </button>
+              )}
+            </div>
+
+            <div className="controls-right">
+              <div className="filter-group">
+                <label>Filter:</label>
+                <select 
+                  value={filterType} 
+                  onChange={(e) => setFilterType(e.target.value)}
+                  className="filter-select"
+                >
+                  {itemTypes.map(type => (
+                    <option key={type} value={type}>
+                      {type === 'all' ? 'All Types' : type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sort-group">
+                <label>Sort by:</label>
+                <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="sort-select"
+                >
+                  <option value="recent">Recently Added</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="name">Name</option>
+                  <option value="type">Type</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Wishlist Grid */}
         {filteredWishlist.length > 0 ? (
           <div className="wishlist-grid">
-            {filteredWishlist.map(game => (
-              <div key={game.id} className="wishlist-item">
-                <div className="item-image">
-                  <img src={game.cover} alt={game.title} />
-                  {game.isOnSale && game.discount > 0 && (
-                    <div className="discount-badge">-{game.discount}%</div>
-                  )}
-                  {!game.isReleased && (
-                    <div className="upcoming-badge">UPCOMING</div>
-                  )}
+            {filteredWishlist.map((item) => (
+              <div key={item._id} className="wishlist-item">
+                <div className="item-checkbox">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.includes(item._id)}
+                    onChange={() => handleSelectItem(item._id)}
+                    id={`item-${item._id}`}
+                  />
                 </div>
 
                 <div className="item-content">
-                  <div className="item-header">
-                    <div className="item-info">
-                      <h3 className="item-title">{game.title}</h3>
-                      <p className="item-developer">{game.developer}</p>
-                    </div>
-                    <div className="item-price">
-                      {game.isOnSale && game.discount > 0 ? (
-                        <div className="price-discounted">
-                          <span className="original-price">${game.originalPrice.toFixed(2)}</span>
-                          <span className="current-price">${game.price.toFixed(2)}</span>
-                        </div>
-                      ) : (
-                        <span className="current-price">${game.price.toFixed(2)}</span>
-                      )}
-                    </div>
+                  <div className="item-image">
+                    <img 
+                      src={item.image || item.cover || 'https://via.placeholder.com/150'} 
+                      alt={item.title || item.name}
+                    />
+                    {item.type && (
+                      <span className="item-type-badge">{item.type}</span>
+                    )}
                   </div>
 
-                  <div className="item-meta">
-                    <div className="meta-platforms">
-                      <span className="meta-label">Platforms:</span>
-                      <div className="platform-tags">
-                        {game.platforms.map((platform, index) => (
-                          <span key={index} className="platform-tag">{platform}</span>
+                  <div className="item-details">
+                    <h3 className="item-title">
+                      <Link to={`/${item.type?.toLowerCase()}/${item.id || item._id}`}>
+                        {item.title || item.name}
+                      </Link>
+                    </h3>
+
+                    {item.artist && (
+                      <p className="item-artist">{item.artist}</p>
+                    )}
+
+                    {item.year && (
+                      <p className="item-year">{item.year}</p>
+                    )}
+
+                    {item.rating && (
+                      <div className="item-rating">
+                        <span className="rating-star">⭐</span>
+                        <span className="rating-value">{item.rating}</span>
+                      </div>
+                    )}
+
+                    {item.genres && (
+                      <div className="item-genres">
+                        {item.genres.slice(0, 3).map(genre => (
+                          <span key={genre} className="genre-tag">{genre}</span>
                         ))}
                       </div>
-                    </div>
-                    <div className="meta-genres">
-                      <span className="meta-label">Genres:</span>
-                      <div className="genre-tags">
-                        {game.genre.map((genre, index) => (
-                          <span key={index} className="genre-tag">{genre}</span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="meta-release">
-                      <span className="meta-label">Release:</span>
-                      <span className={`release-date ${!game.isReleased ? 'upcoming' : ''}`}>
-                        {formatDate(game.releaseDate)}
+                    )}
+
+                    <div className="item-meta">
+                      <span className="meta-date">
+                        Added: {new Date(item.addedAt || Date.now()).toLocaleDateString()}
                       </span>
                     </div>
-                  </div>
 
-                  <div className="item-actions">
-                    <button 
-                      className="action-btn buy-btn"
-                      onClick={() => handleMoveToCart(game)}
-                    >
-                      <span className="btn-icon">🛒</span>
-                      Add to Cart
-                    </button>
-                    <button 
-                      className="action-btn remove-btn"
-                      onClick={() => handleRemoveFromWishlist(game.id)}
-                    >
-                      <span className="btn-icon">🗑️</span>
-                      Remove
-                    </button>
-                    <button className="action-btn share-btn">
-                      <span className="btn-icon">↗️</span>
-                      Share
-                    </button>
+                    <div className="item-actions">
+                      <button 
+                        className="action-btn view-btn"
+                        onClick={() => navigate(`/${item.type?.toLowerCase()}/${item.id || item._id}`)}
+                      >
+                        View Details
+                      </button>
+                      <button 
+                        className="action-btn remove-btn"
+                        onClick={() => handleRemoveItem(item._id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -343,47 +397,88 @@ const WishlistPage = () => {
           </div>
         ) : (
           <div className="empty-wishlist">
-            <div className="empty-icon">🎮</div>
-            <h3 className="empty-title">Your wishlist is empty</h3>
-            <p className="empty-message">
-              Add games you want to play to your wishlist and get notified when they go on sale
-            </p>
-            <Link to="/games" className="browse-games-btn">
-              <span className="btn-icon">🎯</span>
-              Browse Games
-            </Link>
+            <div className="empty-icon">❤️</div>
+            <h3>Your wishlist is empty</h3>
+            <p>Start adding items to your wishlist and they'll appear here</p>
+            <div className="empty-actions">
+              <Link to="/movies" className="browse-btn">Browse Movies</Link>
+              <Link to="/series" className="browse-btn">Browse Series</Link>
+              <Link to="/music" className="browse-btn">Browse Music</Link>
+              <Link to="/anime" className="browse-btn">Browse Anime</Link>
+            </div>
           </div>
         )}
 
-        {/* Summary & Actions */}
-        {filteredWishlist.length > 0 && (
-          <div className="wishlist-summary">
-            <div className="summary-content">
-              <div className="summary-stats">
-                <div className="summary-stat">
-                  <span className="stat-label">Total Games:</span>
-                  <span className="stat-value">{filteredWishlist.length}</span>
-                </div>
-                <div className="summary-stat">
-                  <span className="stat-label">Total Value:</span>
-                  <span className="stat-value">${getTotalPrice()}</span>
-                </div>
-                <div className="summary-stat">
-                  <span className="stat-label">Potential Savings:</span>
-                  <span className="stat-value savings">{getTotalSavings()}%</span>
-                </div>
+        {/* Wishlist Stats */}
+        {wishlist.length > 0 && (
+          <div className="wishlist-stats">
+            <div className="stat-card">
+              <div className="stat-icon">📊</div>
+              <div className="stat-info">
+                <span className="stat-value">{wishlist.length}</span>
+                <span className="stat-label">Total Items</span>
               </div>
-              
-              <div className="summary-actions">
-                <button className="summary-btn primary-btn">
-                  <span className="btn-icon">🛒</span>
-                  Add All to Cart
-                </button>
-                <button className="summary-btn secondary-btn">
-                  <span className="btn-icon">📧</span>
-                  Get Price Alerts
-                </button>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">🎬</div>
+              <div className="stat-info">
+                <span className="stat-value">
+                  {wishlist.filter(item => item.type === 'Movie').length}
+                </span>
+                <span className="stat-label">Movies</span>
               </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">📺</div>
+              <div className="stat-info">
+                <span className="stat-value">
+                  {wishlist.filter(item => item.type === 'Series').length}
+                </span>
+                <span className="stat-label">Series</span>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">🎵</div>
+              <div className="stat-info">
+                <span className="stat-value">
+                  {wishlist.filter(item => item.type === 'Music').length}
+                </span>
+                <span className="stat-label">Music</span>
+              </div>
+            </div>
+
+            <div className="stat-card">
+              <div className="stat-icon">📺</div>
+              <div className="stat-info">
+                <span className="stat-value">
+                  {wishlist.filter(item => item.type === 'Anime').length}
+                </span>
+                <span className="stat-label">Anime</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Recommendations based on wishlist */}
+        {wishlist.length > 0 && (
+          <div className="recommendations-section">
+            <h3 className="section-title">You Might Also Like</h3>
+            <div className="recommendations-grid">
+              {[...Array(4)].map((_, index) => (
+                <div key={index} className="recommendation-card">
+                  <div className="rec-image">
+                    <img src="https://via.placeholder.com/200x120" alt="Recommendation" />
+                  </div>
+                  <div className="rec-info">
+                    <h4 className="rec-title">Recommended Item {index + 1}</h4>
+                    <p className="rec-type">Based on your wishlist</p>
+                    <button className="rec-btn">View Details</button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -392,4 +487,4 @@ const WishlistPage = () => {
   );
 };
 
-export default WishlistPage;
+export default WishListPage;

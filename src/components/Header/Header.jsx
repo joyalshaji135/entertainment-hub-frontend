@@ -55,7 +55,8 @@ const Header = () => {
     { path: '/home', label: 'Home', icon: '🏠' },
     { path: '/series', label: 'Series', icon: '📺' },
     { path: '/music', label: 'Music', icon: '🎵' },
-    { path: '/games', label: 'Games', icon: '🎮' },
+    { path: '/anime', label: 'Anime', icon: '🍥' },
+    { path: '/wishlist', label: 'Wishlist', icon: '❤️' },
   ];
 
   // Navigation items for logged-out users

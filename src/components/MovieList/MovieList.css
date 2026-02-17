@@ -405,67 +405,191 @@
   }
 }
 
-/* Responsive Design */
-@media (max-width: 1200px) {
-  .movies-grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+/* Loading State */
+.movie-list-loading {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: white;
+}
+
+.movie-list-loading .loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  border-top-color: #4ecdc4;
+  animation: spin 1s ease-in-out infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Error State */
+.movie-list-error {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: white;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  margin: 2rem;
+}
+
+.error-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.movie-list-error h3 {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  color: #ff6b6b;
+}
+
+.movie-list-error p {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 2rem;
+}
+
+.retry-btn {
+  padding: 12px 30px;
+  background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+  border: none;
+  border-radius: 30px;
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.retry-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(78, 205, 196, 0.4);
+}
+
+/* Category Count */
+.category-count {
+  margin-left: 5px;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Movie Rank */
+.movie-rank {
+  color: #4ecdc4;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Top Badge */
+.top-badge {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: linear-gradient(45deg, #ffd700, #ffa500);
+  color: #000;
+  padding: 5px 15px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 5px 15px rgba(255, 215, 0, 0.3);
+  z-index: 2;
+}
+
+/* Watchlist Button States */
+.watchlist-btn.in-watchlist {
+  background: rgba(78, 205, 196, 0.2);
+  border-color: #4ecdc4;
+  color: #4ecdc4;
+}
+
+.watchlist-btn.in-watchlist:hover {
+  background: rgba(78, 205, 196, 0.3);
+}
+
+/* Load More Info */
+.load-more-info {
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 1rem;
+  font-size: 0.95rem;
+}
+
+/* Movie Card Link */
+.movie-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  height: 100%;
+  cursor: pointer;
+  opacity: 0;
+  animation: fadeInUp 0.5s ease-out forwards;
+  animation-delay: calc(var(--animation-order) * 0.05s);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
+/* Hover Effects */
+.movie-card-link:hover .movie-card {
+  transform: translateY(-10px);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #4ecdc4;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+}
+
+.movie-card-link:hover .movie-image img {
+  transform: scale(1.1);
+}
+
+.movie-card-link:hover .image-overlay {
+  opacity: 1;
+}
+
+/* Responsive adjustments */
 @media (max-width: 768px) {
-  .movie-list-container {
-    padding: 1rem;
+  .category-count {
+    display: none;
   }
   
-  .list-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1.5rem;
+  .movie-list-error {
+    margin: 1rem;
+    padding: 2rem 1rem;
   }
   
-  .list-title {
-    font-size: 2rem;
+  .movie-list-error h3 {
+    font-size: 1.5rem;
   }
   
-  .category-filter {
-    gap: 0.5rem;
-  }
-  
-  .category-btn {
-    padding: 10px 15px;
-    font-size: 0.9rem;
-  }
-  
-  .movies-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1.5rem;
-  }
-  
-  .movie-actions {
-    flex-direction: column;
+  .error-icon {
+    font-size: 3rem;
   }
 }
 
 @media (max-width: 480px) {
-  .movies-grid {
-    grid-template-columns: 1fr;
+  .movie-list-loading p {
+    font-size: 0.95rem;
   }
   
-  .category-btn {
-    padding: 8px 12px;
-    font-size: 0.85rem;
-  }
-  
-  .category-icon {
-    font-size: 1rem;
-  }
-  
-  .movie-title {
-    font-size: 1.2rem;
-  }
-  
-  .load-more-btn {
+  .retry-btn {
     width: 100%;
-    padding: 12px 20px;
+    padding: 10px 20px;
   }
 }
