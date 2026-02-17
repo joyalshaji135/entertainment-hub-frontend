@@ -1,5 +1,7 @@
+// pages/Login/Login.jsx
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import './Login.css';
 
 const Login = () => {
@@ -12,6 +14,7 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -29,44 +32,15 @@ const Login = () => {
     setLoading(true);
     setError('');
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    const result = await login(formData.email, formData.password);
 
-    // Mock authentication - In real app, this would be an API call
-    const mockUsers = [
-      { email: 'user@example.com', password: 'password123', name: 'John Doe', avatar: null },
-      { email: 'admin@entertainhub.com', password: 'admin123', name: 'Admin User', avatar: null },
-    ];
-
-    const user = mockUsers.find(
-      u => u.email === formData.email && u.password === formData.password
-    );
-
-    if (user) {
-      // Simulate successful login
-      const userData = {
-        id: Date.now(),
-        name: user.name,
-        email: user.email,
-        avatar: user.avatar,
-        token: 'mock-jwt-token-' + Date.now(),
-        isPremium: Math.random() > 0.5 // Random premium status for demo
-      };
-
-      // Save to localStorage
-      localStorage.setItem('authToken', userData.token);
-      localStorage.setItem('user', JSON.stringify(userData));
-
-      // Dispatch auth change event
-      window.dispatchEvent(new Event('authChange'));
-
+    if (result.success) {
       // Show success message
-      alert('Login successful! Welcome back to EntertainHub.');
-
+      alert(`Welcome back to EntertainHub, ${result.user.name || 'User'}!`);
       // Navigate to home
       navigate('/home');
     } else {
-      setError('Invalid email or password. Please try again.');
+      setError(result.error || 'Invalid email or password. Please try again.');
     }
 
     setLoading(false);
@@ -74,8 +48,8 @@ const Login = () => {
 
   const handleDemoLogin = () => {
     setFormData({
-      email: 'user@example.com',
-      password: 'password123',
+      email: 'joyalshaji135@gmail.com',
+      password: '12345678',
       rememberMe: false
     });
   };
@@ -153,7 +127,10 @@ const Login = () => {
             disabled={loading}
           >
             {loading ? (
-              <span className="loading-spinner"></span>
+              <>
+                <span className="loading-spinner"></span>
+                <span>Signing in...</span>
+              </>
             ) : (
               <>
                 <span className="btn-text">Sign In</span>

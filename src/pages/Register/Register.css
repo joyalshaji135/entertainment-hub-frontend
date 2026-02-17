@@ -38,14 +38,8 @@
   font-size: 1.1rem;
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
 .form-group {
+  margin-bottom: 1.5rem;
   position: relative;
 }
 
@@ -98,87 +92,67 @@
   display: block;
 }
 
-/* Plan Selection */
-.plan-selection {
-  margin: 2.5rem 0;
-}
-
-.plan-selection h3 {
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 1rem;
-  font-size: 1.3rem;
-}
-
-.plans-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-}
-
-.plan-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 15px;
-  padding: 1.5rem;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.plan-card:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-5px);
-}
-
-.plan-card.selected {
-  background: rgba(78, 205, 196, 0.1);
-  border-color: #4ecdc4;
-  box-shadow: 0 5px 20px rgba(78, 205, 196, 0.2);
-}
-
-.plan-header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.plan-radio {
-  position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 20px;
-  height: 20px;
-}
-
-.plan-card h4 {
-  font-size: 1.2rem;
-  margin: 0.5rem 0;
-  color: white;
-}
-
-.plan-price {
-  font-size: 1.3rem;
-  font-weight: bold;
-  color: #4ecdc4;
-}
-
-.plan-features {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.plan-features li {
-  color: rgba(255, 255, 255, 0.7);
-  padding: 0.3rem 0;
-  font-size: 0.9rem;
-}
-
 /* Terms Section */
 .terms-section {
   margin: 2rem 0;
   position: relative;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  position: relative;
+  padding-left: 30px;
+}
+
+.checkbox-label input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  position: absolute;
+  left: 0;
+  height: 20px;
+  width: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+}
+
+.checkbox-label:hover input ~ .checkmark {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.checkbox-label input:checked ~ .checkmark {
+  background: linear-gradient(45deg, #4ecdc4, #ff6b6b);
+  border-color: transparent;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+}
+
+.checkbox-label input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.checkbox-label .checkmark:after {
+  left: 6px;
+  top: 2px;
+  width: 5px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 .terms-link {
@@ -275,6 +249,11 @@
   animation: float 2s ease-in-out infinite;
 }
 
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
 .benefits-list {
   display: flex;
   flex-direction: column;
@@ -292,6 +271,13 @@
   opacity: 0;
   transform: translateX(30px);
   animation: slideInRight 0.5s ease-out forwards;
+}
+
+@keyframes slideInRight {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .benefit-item:hover {
@@ -316,71 +302,6 @@
   flex: 1;
 }
 
-/* Responsive Design */
-@media (max-width: 1200px) {
-  .register-container {
-    grid-template-columns: 1fr;
-    max-width: 800px;
-  }
-  
-  .register-benefits {
-    margin-top: 3rem;
-  }
-}
-
-@media (max-width: 768px) {
-  .register-container {
-    padding: 1rem;
-  }
-  
-  .register-card,
-  .register-benefits {
-    padding: 2rem;
-  }
-  
-  .form-row {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-  
-  .plans-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .register-title {
-    font-size: 2rem;
-  }
-  
-  .benefits-header h3 {
-    font-size: 1.8rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .register-card,
-  .register-benefits {
-    padding: 1.5rem;
-  }
-  
-  .register-title {
-    font-size: 1.8rem;
-  }
-  
-  .benefit-item {
-    flex-direction: column;
-    text-align: center;
-    gap: 0.5rem;
-  }
-  
-  .benefit-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 1.2rem;
-  }
-}
-
-/* Add to Register.css */
-
 /* Error styling */
 .error {
   border-color: #ff6b6b !important;
@@ -402,6 +323,14 @@
   text-align: center;
   margin: 1rem 0;
   font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.error-icon {
+  font-size: 1.2rem;
 }
 
 /* Loading spinner */
@@ -437,4 +366,92 @@
 
 .checkbox-label.error {
   color: #ff6b6b;
+}
+
+/* Fade in animation */
+.fade-in {
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Slide in animations */
+.slide-in-left {
+  animation: slideInLeft 0.5s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.5s ease-out;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .register-container {
+    grid-template-columns: 1fr;
+    max-width: 800px;
+  }
+  
+  .register-benefits {
+    margin-top: 3rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .register-container {
+    padding: 1rem;
+  }
+  
+  .register-card,
+  .register-benefits {
+    padding: 2rem;
+  }
+  
+  .register-title {
+    font-size: 2rem;
+  }
+  
+  .benefits-header h3 {
+    font-size: 1.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .register-card,
+  .register-benefits {
+    padding: 1.5rem;
+  }
+  
+  .register-title {
+    font-size: 1.8rem;
+  }
+  
+  .benefit-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 0.5rem;
+  }
+  
+  .benefit-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
+  }
 }

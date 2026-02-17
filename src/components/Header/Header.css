@@ -462,6 +462,116 @@
     width: 100%;
   }
 }
+/* Mobile Auth Buttons */
+.mobile-auth-buttons {
+  display: none;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.header-nav.active .mobile-auth-buttons {
+  display: flex;
+}
+
+.mobile-auth-buttons .nav-item {
+  flex-direction: row;
+  justify-content: flex-start;
+  padding: 1rem;
+  width: 100%;
+  background: transparent;
+  border: 2px solid transparent;
+}
+
+.mobile-auth-buttons .login-btn {
+  border-color: #4ecdc4;
+  background: transparent;
+}
+
+.mobile-auth-buttons .login-btn:hover {
+  background: rgba(78, 205, 196, 0.1);
+}
+
+.mobile-auth-buttons .register-btn {
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+  border: none;
+}
+
+.mobile-auth-buttons .nav-icon {
+  margin-right: 10px;
+  margin-bottom: 0;
+}
+
+/* User avatar initials */
+.user-avatar {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+  color: white;
+  font-weight: bold;
+  font-size: 1.2rem;
+  border-radius: 50%;
+}
+
+/* Animation for notification badge */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Responsive adjustments for mobile auth buttons */
+@media (max-width: 768px) {
+  .auth-buttons {
+    display: none;
+  }
+  
+  .header-nav.active ~ .header-actions .auth-buttons {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    bottom: 2rem;
+    left: 0;
+    right: 0;
+    padding: 0 2rem;
+    gap: 1rem;
+    z-index: 1000;
+  }
+  
+  .header-nav.active ~ .header-actions .auth-buttons .auth-btn {
+    width: 100%;
+    padding: 15px;
+    font-size: 1.1rem;
+  }
+  
+  /* Adjust dropdown position on mobile */
+  .dropdown-menu {
+    position: fixed;
+    top: auto;
+    bottom: 80px;
+    right: 1rem;
+    left: 1rem;
+    width: auto;
+    min-width: auto;
+  }
+  
+  .user-dropdown:hover .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+}
 
 @media (max-width: 480px) {
   .header-logo {
@@ -477,7 +587,14 @@
   }
   
   .dropdown-menu {
-    min-width: 200px;
-    right: -20px;
+    left: 1rem;
+    right: 1rem;
+    min-width: auto;
+  }
+  
+  .notification-badge {
+    width: 16px;
+    height: 16px;
+    font-size: 0.6rem;
   }
 }

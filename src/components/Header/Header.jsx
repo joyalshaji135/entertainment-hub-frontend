@@ -1,44 +1,16 @@
+// components/Header/Header.jsx
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import './Header.css';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
+  const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Check login status on component mount
-  useEffect(() => {
-    const checkAuthStatus = () => {
-      const token = localStorage.getItem('authToken');
-      const userData = localStorage.getItem('user');
-      
-      if (token && userData) {
-        setIsLoggedIn(true);
-        setUser(JSON.parse(userData));
-      } else {
-        setIsLoggedIn(false);
-        setUser(null);
-      }
-    };
-
-    checkAuthStatus();
-    
-    // Listen for storage events (for login/logout from other tabs)
-    window.addEventListener('storage', checkAuthStatus);
-    
-    // Listen for custom auth events
-    window.addEventListener('authChange', checkAuthStatus);
-    
-    return () => {
-      window.removeEventListener('storage', checkAuthStatus);
-      window.removeEventListener('authChange', checkAuthStatus);
-    };
-  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -48,21 +20,42 @@ const Header = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [location.pathname]);
+
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
       setSearchQuery('');
+      setIsMenuOpen(false);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+    setIsMenuOpen(false);
+  };
+
+  const handleLogin = () => {
+    navigate('/login');
+    setIsMenuOpen(false);
+  };
+
+  const handleRegister = () => {
+    navigate('/register');
+    setIsMenuOpen(false);
   };
 
   // Navigation items for logged-in users
   const loggedInNavItems = [
-    { path: '/home', label: 'Movies', icon: '🎬' },
+    { path: '/home', label: 'Home', icon: '🏠' },
     { path: '/series', label: 'Series', icon: '📺' },
     { path: '/music', label: 'Music', icon: '🎵' },
     { path: '/games', label: 'Games', icon: '🎮' },
-    { path: '/profile', label: 'Profile', icon: '👤' },
   ];
 
   // Navigation items for logged-out users
@@ -73,41 +66,14 @@ const Header = () => {
     { path: '/contact', label: 'Contact', icon: '📞' },
   ];
 
-  const handleLogin = () => {
-    navigate('/login');
-  };
-
-  const handleLogout = () => {
-    // Clear auth data
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('user');
-    
-    // Update state
-    setIsLoggedIn(false);
-    setUser(null);
-    
-    // Dispatch custom event for other components
-    window.dispatchEvent(new Event('authChange'));
-    
-    // Navigate to home
-    navigate('/');
-    
-    // Show logout message
-    alert('You have been logged out successfully!');
-  };
-
-  const handleRegister = () => {
-    navigate('/register');
-  };
-
   // Get current navigation items based on login status
-  const navItems = isLoggedIn ? loggedInNavItems : loggedOutNavItems;
+  const navItems = isAuthenticated ? loggedInNavItems : loggedOutNavItems;
 
   return (
     <header className={`header ${isScrolled ? 'scrolled' : ''}`}>
       <div className="header-container">
         {/* Logo - Always visible */}
-        <Link to={isLoggedIn ? "/home" : "/"} className="header-logo">
+        <Link to={isAuthenticated ? "/home" : "/"} className="header-logo">
           <div className="logo-animation">
             <span className="logo-icon">🎬</span>
             <span className="logo-text">EntertainHub</span>
@@ -115,7 +81,7 @@ const Header = () => {
         </Link>
 
         {/* Search Bar - Only for logged-in users */}
-        {isLoggedIn && (
+        {isAuthenticated && (
           <div className="search-container">
             <form onSubmit={handleSearch} className="search-form">
               <input
@@ -147,11 +113,39 @@ const Header = () => {
               <span className="nav-label">{link.label}</span>
             </Link>
           ))}
+          
+          {/* Show profile link in mobile menu for logged-in users */}
+          {isAuthenticated && (
+            <Link
+              to="/profile"
+              className={`nav-item ${
+                location.pathname === '/profile' ? 'active' : ''
+              }`}
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <span className="nav-icon">👤</span>
+              <span className="nav-label">Profile</span>
+            </Link>
+          )}
+          
+          {/* Show auth buttons in mobile menu for logged-out users */}
+          {!isAuthenticated && (
+            <div className="mobile-auth-buttons">
+              <button className="nav-item auth-btn login-btn" onClick={handleLogin}>
+                <span className="nav-icon">🔑</span>
+                <span className="nav-label">Login</span>
+              </button>
+              <button className="nav-item auth-btn register-btn" onClick={handleRegister}>
+                <span className="nav-icon">📝</span>
+                <span className="nav-label">Register</span>
+              </button>
+            </div>
+          )}
         </nav>
 
         {/* User Actions - Different based on login status */}
         <div className="header-actions">
-          {isLoggedIn ? (
+          {isAuthenticated ? (
             <>
               {/* Notification Bell for logged-in users */}
               <button className="notification-btn">
@@ -163,9 +157,15 @@ const Header = () => {
               <div className="user-dropdown">
                 <button className="user-btn">
                   {user?.avatar ? (
-                    <img src={user.avatar} alt={user.name} className="user-avatar-img" />
+                    <img 
+                      src={user.avatar} 
+                      alt={user.name || 'User'} 
+                      className="user-avatar-img" 
+                    />
                   ) : (
-                    <span className="user-avatar">👤</span>
+                    <span className="user-avatar">
+                      {user?.name ? user.name.charAt(0).toUpperCase() : '👤'}
+                    </span>
                   )}
                 </button>
                 <div className="dropdown-menu">
@@ -210,6 +210,7 @@ const Header = () => {
           <button 
             className={`menu-toggle ${isMenuOpen ? 'active' : ''}`}
             onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-label="Toggle menu"
           >
             <span className="bar"></span>
             <span className="bar"></span>

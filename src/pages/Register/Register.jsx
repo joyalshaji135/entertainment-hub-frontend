@@ -1,5 +1,7 @@
+// pages/Register/Register.jsx
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import './Register.css';
 
 const Register = () => {
@@ -8,13 +10,14 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    plan: 'basic',
     termsAccepted: false
   });
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+  const [apiError, setApiError] = useState('');
   const navigate = useNavigate();
+  const { register } = useAuth();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -27,6 +30,8 @@ const Register = () => {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
+    // Clear API error when user makes changes
+    if (apiError) setApiError('');
   };
 
   const validateForm = () => {
@@ -51,44 +56,23 @@ const Register = () => {
     }
 
     setLoading(true);
+    setApiError('');
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    const result = await register(
+      formData.name,
+      formData.email,
+      formData.password
+    );
 
-    // Mock registration
-    const userData = {
-      id: Date.now(),
-      name: formData.name,
-      email: formData.email,
-      plan: formData.plan,
-      token: 'mock-jwt-token-' + Date.now(),
-      isPremium: formData.plan !== 'basic',
-      joinDate: new Date().toISOString(),
-      watchlist: [],
-      favorites: []
-    };
-
-    // Save to localStorage
-    localStorage.setItem('authToken', userData.token);
-    localStorage.setItem('user', JSON.stringify(userData));
-
-    // Dispatch auth change event
-    window.dispatchEvent(new Event('authChange'));
-
-    // Show success message
-    alert(`Welcome to EntertainHub, ${userData.name}! Your ${formData.plan} account has been created.`);
-
-    // Navigate to home
-    navigate('/home');
+    if (result.success) {
+      alert(`Welcome to EntertainHub, ${formData.name}! Your account has been created.`);
+      navigate('/home');
+    } else {
+      setApiError(result.error || 'Registration failed. Please try again.');
+    }
 
     setLoading(false);
   };
-
-  const plans = [
-    { id: 'basic', name: 'Basic', price: 'Free', features: ['SD Quality', '1 Device', 'Limited Content'] },
-    { id: 'premium', name: 'Premium', price: '$9.99/month', features: ['HD Quality', '4 Devices', 'All Content'] },
-    { id: 'family', name: 'Family', price: '$14.99/month', features: ['4K Quality', '6 Devices', 'All Content + Kids'] }
-  ];
 
   return (
     <div className="register-container fade-in">
@@ -98,113 +82,84 @@ const Register = () => {
           <p className="register-subtitle">Start your entertainment journey today</p>
         </div>
 
+        {apiError && (
+          <div className="error-banner">
+            <span className="error-icon">⚠️</span>
+            {apiError}
+          </div>
+        )}
+
         <form className="register-form" onSubmit={handleSubmit}>
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="name">Full Name</label>
-              <div className="input-group">
-                <span className="input-icon">👤</span>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Enter your full name"
-                  className={errors.name ? 'error' : ''}
-                  disabled={loading}
-                />
-              </div>
-              {errors.name && <span className="error-message">{errors.name}</span>}
+          <div className="form-group">
+            <label htmlFor="name">Full Name</label>
+            <div className="input-group">
+              <span className="input-icon">👤</span>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Enter your full name"
+                className={errors.name ? 'error' : ''}
+                disabled={loading}
+              />
             </div>
-
-            <div className="form-group">
-              <label htmlFor="email">Email Address</label>
-              <div className="input-group">
-                <span className="input-icon">✉️</span>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Enter your email"
-                  className={errors.email ? 'error' : ''}
-                  disabled={loading}
-                />
-              </div>
-              {errors.email && <span className="error-message">{errors.email}</span>}
-            </div>
+            {errors.name && <span className="error-message">{errors.name}</span>}
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="password">Password</label>
-              <div className="input-group">
-                <span className="input-icon">🔒</span>
-                <input
-                  type="password"
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="Create a password"
-                  className={errors.password ? 'error' : ''}
-                  disabled={loading}
-                />
-              </div>
-              {errors.password && <span className="error-message">{errors.password}</span>}
+          <div className="form-group">
+            <label htmlFor="email">Email Address</label>
+            <div className="input-group">
+              <span className="input-icon">✉️</span>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Enter your email"
+                className={errors.email ? 'error' : ''}
+                disabled={loading}
+              />
             </div>
-
-            <div className="form-group">
-              <label htmlFor="confirmPassword">Confirm Password</label>
-              <div className="input-group">
-                <span className="input-icon">🔒</span>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  placeholder="Confirm your password"
-                  className={errors.confirmPassword ? 'error' : ''}
-                  disabled={loading}
-                />
-              </div>
-              {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}
-            </div>
+            {errors.email && <span className="error-message">{errors.email}</span>}
           </div>
 
-          <div className="plan-selection">
-            <h3>Choose Your Plan</h3>
-            <div className="plans-grid">
-              {plans.map(plan => (
-                <div 
-                  key={plan.id}
-                  className={`plan-card ${formData.plan === plan.id ? 'selected' : ''}`}
-                  onClick={() => !loading && handleChange({ target: { name: 'plan', value: plan.id } })}
-                >
-                  <div className="plan-header">
-                    <input
-                      type="radio"
-                      name="plan"
-                      value={plan.id}
-                      checked={formData.plan === plan.id}
-                      onChange={handleChange}
-                      className="plan-radio"
-                      disabled={loading}
-                    />
-                    <h4>{plan.name}</h4>
-                    <div className="plan-price">{plan.price}</div>
-                  </div>
-                  <ul className="plan-features">
-                    {plan.features.map((feature, index) => (
-                      <li key={index}>✓ {feature}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
+            <div className="input-group">
+              <span className="input-icon">🔒</span>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="Create a password (min. 6 characters)"
+                className={errors.password ? 'error' : ''}
+                disabled={loading}
+              />
             </div>
+            {errors.password && <span className="error-message">{errors.password}</span>}
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="confirmPassword">Confirm Password</label>
+            <div className="input-group">
+              <span className="input-icon">🔒</span>
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="Confirm your password"
+                className={errors.confirmPassword ? 'error' : ''}
+                disabled={loading}
+              />
+            </div>
+            {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}
           </div>
 
           <div className="terms-section">
@@ -231,7 +186,10 @@ const Register = () => {
             disabled={loading}
           >
             {loading ? (
-              <span className="loading-spinner"></span>
+              <>
+                <span className="loading-spinner"></span>
+                <span>Creating Account...</span>
+              </>
             ) : (
               <>
                 <span className="btn-text">Create Account</span>
