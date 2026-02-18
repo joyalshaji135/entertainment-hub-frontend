@@ -11,9 +11,13 @@ const WishListPage = () => {
   const [selectedItems, setSelectedItems] = useState([]);
   const [filterType, setFilterType] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
+  const [movieDetails, setMovieDetails] = useState({});
+  const [loadingMovies, setLoadingMovies] = useState(false);
   
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  const API_KEY = import.meta.env.VITE_API_KEY;
 
   // Fetch wishlist on component mount
   useEffect(() => {
@@ -21,8 +25,17 @@ const WishListPage = () => {
       navigate('/login');
       return;
     }
-    fetchWishlist();
-  }, [isAuthenticated, navigate]);
+    if (user) {
+      fetchWishlist();
+    }
+  }, [isAuthenticated, navigate, user]);
+
+  // Fetch movie details when wishlist updates
+  useEffect(() => {
+    if (wishlist.length > 0) {
+      fetchMovieDetails();
+    }
+  }, [wishlist]);
 
   const fetchWishlist = async () => {
     setLoading(true);
@@ -30,13 +43,17 @@ const WishListPage = () => {
 
     try {
       const token = localStorage.getItem('authToken');
+      const userId = user?._id || user?.id;
       
-      const response = await fetch('http://localhost:5000/wish-list/get', {
+      if (!userId) {
+        throw new Error('User ID not found');
+      }
+
+      const response = await fetch(`http://localhost:5000/wish-list/get/${userId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-          'userId': user?._id || user?.id
+          'Authorization': `Bearer ${token}`
         }
       });
 
@@ -46,11 +63,17 @@ const WishListPage = () => {
 
       const data = await response.json();
       
-      // Handle different response structures
-      if (data.data) {
-        setWishlist(data.data);
-      } else if (Array.isArray(data)) {
-        setWishlist(data);
+      if (data.status === 'success' && data.data) {
+        // Process wishlist items
+        const processedItems = data.data.map(item => ({
+          _id: item._id,
+          userId: item.userId,
+          sourceId: item.sourceId || item.movieId, // Handle both field names
+          type: item.sourceId ? 'series' : 'movie', // Determine type based on field
+          addedAt: item.createdAt || new Date().toISOString()
+        }));
+        
+        setWishlist(processedItems);
       } else {
         setWishlist([]);
       }
@@ -59,6 +82,87 @@ const WishListPage = () => {
       console.error('Error fetching wishlist:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMovieDetails = async () => {
+    setLoadingMovies(true);
+    
+    try {
+      const movieIds = wishlist
+        .filter(item => item.type === 'movie')
+        .map(item => item.sourceId);
+      
+      const seriesIds = wishlist
+        .filter(item => item.type === 'series')
+        .map(item => item.sourceId);
+
+      // Fetch movie details
+      const moviePromises = movieIds.map(async (id) => {
+        try {
+          const response = await fetch(`https://imdb-top-100-movies.p.rapidapi.com/${id}`, {
+            method: 'GET',
+            headers: {
+              'x-rapidapi-host': 'imdb-top-100-movies.p.rapidapi.com',
+              'x-rapidapi-key': API_KEY
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            return { id, data };
+          }
+        } catch (err) {
+          console.error(`Error fetching movie ${id}:`, err);
+        }
+        return null;
+      });
+
+      // Fetch series details
+      const seriesPromises = seriesIds.map(async (id) => {
+        try {
+          const response = await fetch(`https://imdb-top-100-movies.p.rapidapi.com/series/${id}`, {
+            method: 'GET',
+            headers: {
+              'x-rapidapi-host': 'imdb-top-100-movies.p.rapidapi.com',
+              'x-rapidapi-key': API_KEY
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            return { id, data };
+          }
+        } catch (err) {
+          console.error(`Error fetching series ${id}:`, err);
+        }
+        return null;
+      });
+
+      const [movieResults, seriesResults] = await Promise.all([
+        Promise.all(moviePromises),
+        Promise.all(seriesPromises)
+      ]);
+
+      const details = {};
+      
+      movieResults.forEach(result => {
+        if (result) {
+          details[result.id] = { ...result.data, type: 'movie' };
+        }
+      });
+
+      seriesResults.forEach(result => {
+        if (result) {
+          details[result.id] = { ...result.data, type: 'series' };
+        }
+      });
+
+      setMovieDetails(details);
+    } catch (err) {
+      console.error('Error fetching details:', err);
+    } finally {
+      setLoadingMovies(false);
     }
   };
 
@@ -75,19 +179,22 @@ const WishListPage = () => {
         }
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        throw new Error('Failed to remove item');
+        throw new Error(data.message || 'Failed to remove item');
       }
 
-      // Update local state
-      setWishlist(prev => prev.filter(item => item._id !== itemId));
-      setSelectedItems(prev => prev.filter(id => id !== itemId));
-      
-      // Show success message
-      alert('Item removed from wishlist');
+      if (data.status === 'success') {
+        // Update local state
+        setWishlist(prev => prev.filter(item => item._id !== itemId));
+        setSelectedItems(prev => prev.filter(id => id !== itemId));
+        
+        showNotification('Item removed from wishlist', 'success');
+      }
     } catch (err) {
       console.error('Error removing item:', err);
-      alert('Failed to remove item. Please try again.');
+      showNotification(err.message || 'Failed to remove item', 'error');
     }
   };
 
@@ -98,7 +205,7 @@ const WishListPage = () => {
       try {
         const token = localStorage.getItem('authToken');
         
-        // Remove items one by one (or you could create a batch endpoint)
+        // Remove items one by one
         for (const itemId of selectedItems) {
           await fetch(`http://localhost:5000/wish-list/remove/${itemId}`, {
             method: 'DELETE',
@@ -114,10 +221,10 @@ const WishListPage = () => {
         setWishlist(prev => prev.filter(item => !selectedItems.includes(item._id)));
         setSelectedItems([]);
         
-        alert('Selected items removed from wishlist');
+        showNotification('Selected items removed from wishlist', 'success');
       } catch (err) {
         console.error('Error removing items:', err);
-        alert('Failed to remove some items. Please try again.');
+        showNotification('Failed to remove some items', 'error');
       }
     }
   };
@@ -138,17 +245,16 @@ const WishListPage = () => {
     );
   };
 
-  const handleAddToCart = (item) => {
-    // Implement add to cart functionality
-    alert(`Added ${item.title || item.name} to cart`);
-  };
-
   const handleShareWishlist = () => {
     const wishlistData = {
-      items: wishlist.map(item => ({
-        title: item.title || item.name,
-        type: item.type
-      })),
+      items: wishlist.map(item => {
+        const details = movieDetails[item.sourceId];
+        return {
+          title: details?.title || 'Unknown',
+          type: item.type,
+          id: item.sourceId
+        };
+      }),
       count: wishlist.length
     };
 
@@ -160,8 +266,24 @@ const WishListPage = () => {
       });
     } else {
       navigator.clipboard.writeText(JSON.stringify(wishlistData, null, 2));
-      alert('Wishlist data copied to clipboard!');
+      showNotification('Wishlist data copied to clipboard!', 'success');
     }
+  };
+
+  const showNotification = (message, type = 'success') => {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = type === 'success' ? 'success-message' : 'error-message';
+    messageDiv.innerHTML = `
+      <span class="message-icon">${type === 'success' ? '✅' : '❌'}</span>
+      <span class="message-text">${message}</span>
+    `;
+    document.body.appendChild(messageDiv);
+    
+    setTimeout(() => {
+      if (messageDiv.parentNode) {
+        messageDiv.remove();
+      }
+    }, 3000);
   };
 
   // Filter and sort wishlist
@@ -170,9 +292,7 @@ const WishListPage = () => {
 
     // Filter by type
     if (filterType !== 'all') {
-      filtered = filtered.filter(item => 
-        item.type?.toLowerCase() === filterType.toLowerCase()
-      );
+      filtered = filtered.filter(item => item.type === filterType);
     }
 
     // Sort
@@ -184,10 +304,11 @@ const WishListPage = () => {
         filtered.sort((a, b) => new Date(a.addedAt || 0) - new Date(b.addedAt || 0));
         break;
       case 'name':
-        filtered.sort((a, b) => (a.title || a.name || '').localeCompare(b.title || b.name || ''));
-        break;
-      case 'type':
-        filtered.sort((a, b) => (a.type || '').localeCompare(b.type || ''));
+        filtered.sort((a, b) => {
+          const nameA = movieDetails[a.sourceId]?.title || '';
+          const nameB = movieDetails[b.sourceId]?.title || '';
+          return nameA.localeCompare(nameB);
+        });
         break;
       default:
         break;
@@ -199,7 +320,7 @@ const WishListPage = () => {
   const filteredWishlist = getFilteredAndSortedWishlist();
 
   // Get unique types for filter
-  const itemTypes = ['all', ...new Set(wishlist.map(item => item.type).filter(Boolean))];
+  const itemTypes = ['all', ...new Set(wishlist.map(item => item.type))];
 
   if (loading) {
     return (
@@ -292,7 +413,7 @@ const WishListPage = () => {
                 >
                   {itemTypes.map(type => (
                     <option key={type} value={type}>
-                      {type === 'all' ? 'All Types' : type}
+                      {type === 'all' ? 'All Types' : type.charAt(0).toUpperCase() + type.slice(1)}
                     </option>
                   ))}
                 </select>
@@ -308,7 +429,6 @@ const WishListPage = () => {
                   <option value="recent">Recently Added</option>
                   <option value="oldest">Oldest First</option>
                   <option value="name">Name</option>
-                  <option value="type">Type</option>
                 </select>
               </div>
             </div>
@@ -318,82 +438,84 @@ const WishListPage = () => {
         {/* Wishlist Grid */}
         {filteredWishlist.length > 0 ? (
           <div className="wishlist-grid">
-            {filteredWishlist.map((item) => (
-              <div key={item._id} className="wishlist-item">
-                <div className="item-checkbox">
-                  <input
-                    type="checkbox"
-                    checked={selectedItems.includes(item._id)}
-                    onChange={() => handleSelectItem(item._id)}
-                    id={`item-${item._id}`}
-                  />
-                </div>
-
-                <div className="item-content">
-                  <div className="item-image">
-                    <img 
-                      src={item.image || item.cover || 'https://via.placeholder.com/150'} 
-                      alt={item.title || item.name}
+            {filteredWishlist.map((item) => {
+              const details = movieDetails[item.sourceId];
+              
+              return (
+                <div key={item._id} className="wishlist-item">
+                  <div className="item-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.includes(item._id)}
+                      onChange={() => handleSelectItem(item._id)}
+                      id={`item-${item._id}`}
                     />
-                    {item.type && (
-                      <span className="item-type-badge">{item.type}</span>
-                    )}
                   </div>
 
-                  <div className="item-details">
-                    <h3 className="item-title">
-                      <Link to={`/${item.type?.toLowerCase()}/${item.id || item._id}`}>
-                        {item.title || item.name}
-                      </Link>
-                    </h3>
-
-                    {item.artist && (
-                      <p className="item-artist">{item.artist}</p>
-                    )}
-
-                    {item.year && (
-                      <p className="item-year">{item.year}</p>
-                    )}
-
-                    {item.rating && (
-                      <div className="item-rating">
-                        <span className="rating-star">⭐</span>
-                        <span className="rating-value">{item.rating}</span>
-                      </div>
-                    )}
-
-                    {item.genres && (
-                      <div className="item-genres">
-                        {item.genres.slice(0, 3).map(genre => (
-                          <span key={genre} className="genre-tag">{genre}</span>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="item-meta">
-                      <span className="meta-date">
-                        Added: {new Date(item.addedAt || Date.now()).toLocaleDateString()}
-                      </span>
+                  <div className="item-content">
+                    <div className="item-image">
+                      {loadingMovies ? (
+                        <div className="image-placeholder"></div>
+                      ) : (
+                        <img 
+                          src={details?.image || 'https://via.placeholder.com/150x200?text=No+Image'} 
+                          alt={details?.title || 'Item'}
+                        />
+                      )}
+                      <span className="item-type-badge">{item.type}</span>
                     </div>
 
-                    <div className="item-actions">
-                      <button 
-                        className="action-btn view-btn"
-                        onClick={() => navigate(`/${item.type?.toLowerCase()}/${item.id || item._id}`)}
-                      >
-                        View Details
-                      </button>
-                      <button 
-                        className="action-btn remove-btn"
-                        onClick={() => handleRemoveItem(item._id)}
-                      >
-                        Remove
-                      </button>
+                    <div className="item-details">
+                      <h3 className="item-title">
+                        <Link to={`/${item.type}/${item.sourceId}`}>
+                          {details?.title || 'Loading...'}
+                        </Link>
+                      </h3>
+
+                      {details?.year && (
+                        <p className="item-year">{details.year}</p>
+                      )}
+
+                      {details?.rating && (
+                        <div className="item-rating">
+                          <span className="rating-star">⭐</span>
+                          <span className="rating-value">{details.rating}</span>
+                        </div>
+                      )}
+
+                      {details?.genre && (
+                        <div className="item-genres">
+                          {details.genre.slice(0, 3).map(genre => (
+                            <span key={genre} className="genre-tag">{genre}</span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="item-meta">
+                        <span className="meta-date">
+                          Added: {new Date(item.addedAt).toLocaleDateString()}
+                        </span>
+                      </div>
+
+                      <div className="item-actions">
+                        <Link 
+                          to={`/${item.type}/${item.sourceId}`}
+                          className="action-btn view-btn"
+                        >
+                          View Details
+                        </Link>
+                        <button 
+                          className="action-btn remove-btn"
+                          onClick={() => handleRemoveItem(item._id)}
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="empty-wishlist">
@@ -403,8 +525,6 @@ const WishListPage = () => {
             <div className="empty-actions">
               <Link to="/movies" className="browse-btn">Browse Movies</Link>
               <Link to="/series" className="browse-btn">Browse Series</Link>
-              <Link to="/music" className="browse-btn">Browse Music</Link>
-              <Link to="/anime" className="browse-btn">Browse Anime</Link>
             </div>
           </div>
         )}
@@ -424,7 +544,7 @@ const WishListPage = () => {
               <div className="stat-icon">🎬</div>
               <div className="stat-info">
                 <span className="stat-value">
-                  {wishlist.filter(item => item.type === 'Movie').length}
+                  {wishlist.filter(item => item.type === 'movie').length}
                 </span>
                 <span className="stat-label">Movies</span>
               </div>
@@ -434,51 +554,10 @@ const WishListPage = () => {
               <div className="stat-icon">📺</div>
               <div className="stat-info">
                 <span className="stat-value">
-                  {wishlist.filter(item => item.type === 'Series').length}
+                  {wishlist.filter(item => item.type === 'series').length}
                 </span>
                 <span className="stat-label">Series</span>
               </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon">🎵</div>
-              <div className="stat-info">
-                <span className="stat-value">
-                  {wishlist.filter(item => item.type === 'Music').length}
-                </span>
-                <span className="stat-label">Music</span>
-              </div>
-            </div>
-
-            <div className="stat-card">
-              <div className="stat-icon">📺</div>
-              <div className="stat-info">
-                <span className="stat-value">
-                  {wishlist.filter(item => item.type === 'Anime').length}
-                </span>
-                <span className="stat-label">Anime</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Recommendations based on wishlist */}
-        {wishlist.length > 0 && (
-          <div className="recommendations-section">
-            <h3 className="section-title">You Might Also Like</h3>
-            <div className="recommendations-grid">
-              {[...Array(4)].map((_, index) => (
-                <div key={index} className="recommendation-card">
-                  <div className="rec-image">
-                    <img src="https://via.placeholder.com/200x120" alt="Recommendation" />
-                  </div>
-                  <div className="rec-info">
-                    <h4 className="rec-title">Recommended Item {index + 1}</h4>
-                    <p className="rec-type">Based on your wishlist</p>
-                    <button className="rec-btn">View Details</button>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         )}
