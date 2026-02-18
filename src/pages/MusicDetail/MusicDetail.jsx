@@ -28,6 +28,8 @@ const MusicDetail = () => {
     }
   }, [activeTab, song]);
 
+  const API_KEY = import.meta.env.VITE_API_KEY;
+
   const fetchSongDetails = async () => {
     setLoading(true);
     setError(null);
@@ -38,7 +40,7 @@ const MusicDetail = () => {
         method: 'GET',
         headers: {
           'x-rapidapi-host': 'genius-song-lyrics1.p.rapidapi.com',
-          'x-rapidapi-key': '042319157cmsh7c7ddfec2a8370bp186c32jsn0fb395b37716'
+          'x-rapidapi-key': API_KEY
         }
       });
 

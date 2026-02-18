@@ -17,7 +17,7 @@ const AnimePage = () => {
   const [status, setStatus] = useState('');
   const [type, setType] = useState('');
 
-  const API_KEY = '042319157cmsh7c7ddfec2a8370bp186c32jsn0fb395b37716';
+  const API_KEY = import.meta.env.VITE_API_KEY;
   const API_HOST = 'anime-db.p.rapidapi.com';
 
   // Fetch genres on mount

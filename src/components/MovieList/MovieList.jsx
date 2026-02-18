@@ -11,7 +11,9 @@ const MovieList = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [visibleMovies, setVisibleMovies] = useState(12);
-  const { isAuthenticated } = useAuth();
+  const [wishlistItems, setWishlistItems] = useState([]);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
+  const { isAuthenticated, user } = useAuth();
 
   const categories = [
     { id: 'all', label: 'All Movies', icon: '🎬' },
@@ -34,7 +36,14 @@ const MovieList = () => {
 
   useEffect(() => {
     fetchMovies();
-  }, []);
+    if (isAuthenticated && user) {
+      fetchWishlist();
+    }
+  }, [isAuthenticated, user]);
+
+  const API_KEY = import.meta.env.VITE_API_KEY;
+
+  console.log('Using API Key:', API_KEY); // Debugging line to check if the API key is loaded correctly
 
   const fetchMovies = async () => {
     setLoading(true);
@@ -45,7 +54,7 @@ const MovieList = () => {
         method: 'GET',
         headers: {
           'x-rapidapi-host': 'imdb-top-100-movies.p.rapidapi.com',
-          'x-rapidapi-key': '042319157cmsh7c7ddfec2a8370bp186c32jsn0fb395b37716'
+          'x-rapidapi-key': API_KEY
         }
       });
 
@@ -60,6 +69,150 @@ const MovieList = () => {
       console.error('Error fetching movies:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchWishlist = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      const response = await fetch('http://localhost:5000/wish-list/get', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'userId': user?._id || user?.id
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch wishlist');
+      }
+
+      const data = await response.json();
+      
+      // Handle different response structures
+      if (data.data) {
+        setWishlistItems(data.data);
+      } else if (Array.isArray(data)) {
+        setWishlistItems(data);
+      } else {
+        setWishlistItems([]);
+      }
+    } catch (err) {
+      console.error('Error fetching wishlist:', err);
+    }
+  };
+
+  const addToWishlist = async (movie) => {
+    if (!isAuthenticated || !user) {
+      alert('Please login to add movies to wishlist');
+      return false;
+    }
+
+    setWishlistLoading(true);
+    
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      const response = await fetch('http://localhost:5000/wish-list/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userId: user._id || user.id,
+          sourceId: movie.id,
+          sourceType: 'movie',
+          title: movie.title,
+          image: movie.image,
+          rating: movie.rating,
+          year: movie.year,
+          rank: movie.rank,
+          genre: movie.genre
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to add to wishlist');
+      }
+
+      if (data.status === 'success') {
+        // Refresh wishlist
+        await fetchWishlist();
+        alert('Added to wishlist successfully!');
+        return true;
+      }
+    } catch (err) {
+      console.error('Error adding to wishlist:', err);
+      alert(err.message || 'Failed to add to wishlist');
+      return false;
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
+  const removeFromWishlist = async (movieId) => {
+    if (!isAuthenticated || !user) {
+      alert('Please login to manage wishlist');
+      return false;
+    }
+
+    setWishlistLoading(true);
+    
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      // Find the wishlist item ID
+      const wishlistItem = wishlistItems.find(item => item.sourceId === movieId);
+      
+      if (!wishlistItem) {
+        throw new Error('Item not found in wishlist');
+      }
+
+      const response = await fetch(`http://localhost:5000/wish-list/remove/${wishlistItem._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'userId': user._id || user.id
+        }
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to remove from wishlist');
+      }
+
+      if (data.status === 'success') {
+        // Refresh wishlist
+        await fetchWishlist();
+        alert('Removed from wishlist successfully!');
+        return true;
+      }
+    } catch (err) {
+      console.error('Error removing from wishlist:', err);
+      alert(err.message || 'Failed to remove from wishlist');
+      return false;
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
+  const handleWishlistToggle = async (movie, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const isInWishlist = checkInWishlist(movie.id);
+    
+    if (isInWishlist) {
+      await removeFromWishlist(movie.id);
+    } else {
+      await addToWishlist(movie);
     }
   };
 
@@ -83,8 +236,12 @@ const MovieList = () => {
         return sorted.sort((a, b) => a.rank - b.rank);
       case 'popular':
       default:
-        return sorted; // Keep original order (IMDb rank)
+        return sorted;
     }
+  };
+
+  const checkInWishlist = (movieId) => {
+    return wishlistItems.some(item => item.sourceId === movieId);
   };
 
   const filteredMovies = filterMoviesByGenre(movies, selectedCategory);
@@ -93,46 +250,6 @@ const MovieList = () => {
 
   const handleLoadMore = () => {
     setVisibleMovies(prev => prev + 12);
-  };
-
-  const handleAddToWatchlist = (movie, e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!isAuthenticated) {
-      // You can show a login prompt or redirect
-      alert('Please login to add movies to watchlist');
-      return;
-    }
-
-    const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
-    
-    // Check if movie is already in watchlist
-    const isInWatchlist = watchlist.some(item => item.id === movie.id);
-    
-    if (isInWatchlist) {
-      // Remove from watchlist
-      const updatedWatchlist = watchlist.filter(item => item.id !== movie.id);
-      localStorage.setItem('watchlist', JSON.stringify(updatedWatchlist));
-      alert('Removed from watchlist');
-    } else {
-      // Add to watchlist
-      watchlist.push({
-        id: movie.id,
-        title: movie.title,
-        image: movie.image,
-        rating: movie.rating,
-        year: movie.year,
-        rank: movie.rank
-      });
-      localStorage.setItem('watchlist', JSON.stringify(updatedWatchlist));
-      alert('Added to watchlist');
-    }
-  };
-
-  const checkInWatchlist = (movieId) => {
-    const watchlist = JSON.parse(localStorage.getItem('watchlist') || '[]');
-    return watchlist.some(item => item.id === movieId);
   };
 
   if (loading) {
@@ -273,13 +390,14 @@ const MovieList = () => {
                       Watch Now
                     </button>
                     <button 
-                      className={`watchlist-btn ${checkInWatchlist(movie.id) ? 'in-watchlist' : ''}`}
-                      onClick={(e) => handleAddToWatchlist(movie, e)}
+                      className={`wishlist-btn ${checkInWishlist(movie.id) ? 'in-wishlist' : ''}`}
+                      onClick={(e) => handleWishlistToggle(movie, e)}
+                      disabled={wishlistLoading}
                     >
                       <span className="btn-icon">
-                        {checkInWatchlist(movie.id) ? '✓' : '+'}
+                        {checkInWishlist(movie.id) ? '❤️' : '🤍'}
                       </span>
-                      {checkInWatchlist(movie.id) ? 'In List' : 'Watchlist'}
+                      {wishlistLoading ? 'Processing...' : (checkInWishlist(movie.id) ? 'In Wishlist' : 'Add to Wishlist')}
                     </button>
                   </div>
                 </div>

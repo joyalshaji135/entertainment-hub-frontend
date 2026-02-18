@@ -1,74 +1,147 @@
+// pages/Profile/ProfilePage.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import './ProfilePage.css';
 
 const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('overview');
-  const [isEditing, setIsEditing] = useState(false);
-  const [userData, setUserData] = useState({
-    id: 1,
-    name: 'John Gaming',
-    email: 'john.gaming@example.com',
-    avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400',
-    cover: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1200',
-    bio: 'Hardcore gamer and streamer. Love RPGs and competitive FPS games.',
-    location: 'New York, USA',
-    joinDate: '2023-01-15',
-    level: 42,
-    xp: 12500,
-    nextLevelXp: 15000,
-    badges: [
-      { id: 1, name: 'Early Adopter', icon: '🚀', color: '#4ecdc4' },
-      { id: 2, name: 'Completionist', icon: '🏆', color: '#ffd166' },
-      { id: 3, name: 'Community Hero', icon: '🦸', color: '#ef476f' },
-      { id: 4, name: 'Streamer', icon: '🎥', color: '#118ab2' },
-    ],
-    stats: {
-      gamesPlayed: 156,
-      hoursPlayed: '2,450',
-      achievements: 342,
-      friends: 89,
-      reviews: 24,
-      wishlist: 18
-    },
-    recentActivity: [
-      { id: 1, type: 'achievement', game: 'Cyberpunk 2077', title: 'Night City Legend', time: '2 hours ago', icon: '🏆' },
-      { id: 2, type: 'review', game: 'Elden Ring', title: 'Posted a review', time: '1 day ago', icon: '📝' },
-      { id: 3, type: 'purchase', game: 'God of War Ragnarök', title: 'Purchased game', time: '3 days ago', icon: '🛒' },
-      { id: 4, type: 'friend', game: null, title: 'Added new friend', time: '1 week ago', icon: '👥' },
-    ],
-    favoriteGames: [
-      { id: 1, title: 'The Witcher 3', genre: 'RPG', hours: 120, cover: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400' },
-      { id: 2, title: 'Overwatch 2', genre: 'FPS', hours: 85, cover: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=400' },
-      { id: 3, title: 'Stardew Valley', genre: 'Simulation', hours: 65, cover: 'https://images.unsplash.com/photo-1593305841991-05c297ba4575?w=400' },
-      { id: 4, title: 'Red Dead Redemption 2', genre: 'Action', hours: 95, cover: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400' },
-    ]
-  });
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const { user, isAuthenticated } = useAuth();
 
-  const [editForm, setEditForm] = useState({ ...userData });
+  useEffect(() => {
+    if (!isAuthenticated) {
+      // Redirect to login or show message
+      return;
+    }
+    
+    // Load user data from localStorage or context
+    const loadUserData = () => {
+      setLoading(true);
+      
+      // Get user data from localStorage or use from context
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        
+        // Enhance with profile data
+        setUserData({
+          id: parsedUser.id || parsedUser._id || 1,
+          name: parsedUser.name || 'User',
+          email: parsedUser.email || 'user@example.com',
+          avatar: parsedUser.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400',
+          cover: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1200',
+          bio: parsedUser.bio || 'Welcome to my profile! I love watching movies, series, and discovering new content.',
+          location: parsedUser.location || 'EntertainHub',
+          joinDate: parsedUser.joinDate || new Date().toISOString().split('T')[0],
+          level: 1,
+          xp: 0,
+          nextLevelXp: 1000,
+          badges: [
+            { id: 1, name: 'New Member', icon: '🌟', color: '#4ecdc4' },
+          ],
+          stats: {
+            moviesWatched: 0,
+            seriesWatched: 0,
+            musicListened: 0,
+            animeWatched: 0,
+            reviews: 0,
+            wishlist: 0
+          },
+          recentActivity: [
+            { id: 1, type: 'join', title: 'Joined EntertainHub', time: 'Just now', icon: '🎉' },
+          ],
+          favoriteContent: []
+        });
+      }
+      setLoading(false);
+    };
+
+    loadUserData();
+  }, [isAuthenticated, user]);
+
+  // Fetch wishlist count if needed
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      fetchWishlistCount();
+    }
+  }, [isAuthenticated, user]);
+
+  const fetchWishlistCount = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      
+      const response = await fetch('http://localhost:5000/wish-list/get', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'userId': user?._id || user?.id
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        let wishlistItems = [];
+        
+        if (data.data) {
+          wishlistItems = data.data;
+        } else if (Array.isArray(data)) {
+          wishlistItems = data;
+        }
+        
+        setUserData(prev => ({
+          ...prev,
+          stats: {
+            ...prev.stats,
+            wishlist: wishlistItems.length
+          }
+        }));
+      }
+    } catch (err) {
+      console.error('Error fetching wishlist count:', err);
+    }
+  };
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: '📊' },
-    { id: 'games', label: 'My Games', icon: '🎮' },
-    { id: 'achievements', label: 'Achievements', icon: '🏆' },
-    { id: 'friends', label: 'Friends', icon: '👥' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' }
+    { id: 'wishlist', label: 'Wishlist', icon: '❤️' },
+    { id: 'activity', label: 'Activity', icon: '📝' },
   ];
 
-  const handleEditSubmit = (e) => {
-    e.preventDefault();
-    setUserData(editForm);
-    setIsEditing(false);
-    alert('Profile updated successfully!');
-  };
+  if (loading) {
+    return (
+      <div className="profile-loading">
+        <div className="loading-spinner"></div>
+        <p>Loading profile...</p>
+      </div>
+    );
+  }
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setEditForm(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
+  if (!isAuthenticated) {
+    return (
+      <div className="profile-error">
+        <div className="error-icon">👤</div>
+        <h2>Please Login</h2>
+        <p>You need to be logged in to view your profile</p>
+        <Link to="/login" className="login-btn">Go to Login</Link>
+      </div>
+    );
+  }
+
+  if (!userData) {
+    return (
+      <div className="profile-error">
+        <div className="error-icon">❌</div>
+        <h2>Profile Not Found</h2>
+        <p>Unable to load profile data</p>
+        <button onClick={() => window.location.reload()} className="retry-btn">
+          Try Again
+        </button>
+      </div>
+    );
+  }
 
   const xpPercentage = (userData.xp / userData.nextLevelXp) * 100;
 
@@ -79,10 +152,6 @@ const ProfilePage = () => {
         <div className="profile-cover">
           <img src={userData.cover} alt="Cover" className="cover-image" />
           <div className="cover-overlay"></div>
-          <button className="edit-cover-btn">
-            <span className="edit-icon">📷</span>
-            Edit Cover
-          </button>
         </div>
 
         <div className="profile-info">
@@ -90,9 +159,6 @@ const ProfilePage = () => {
             <div className="avatar-container">
               <img src={userData.avatar} alt={userData.name} className="user-avatar" />
               <div className="level-badge">Lvl {userData.level}</div>
-              <button className="edit-avatar-btn">
-                <span className="edit-icon">📷</span>
-              </button>
             </div>
           </div>
 
@@ -114,20 +180,6 @@ const ProfilePage = () => {
                 </span>
               </div>
             </div>
-
-            <div className="profile-actions">
-              <button 
-                className="action-btn edit-profile-btn"
-                onClick={() => setIsEditing(true)}
-              >
-                <span className="btn-icon">✏️</span>
-                Edit Profile
-              </button>
-              <button className="action-btn share-profile-btn">
-                <span className="btn-icon">↗️</span>
-                Share Profile
-              </button>
-            </div>
           </div>
         </div>
       </div>
@@ -137,22 +189,8 @@ const ProfilePage = () => {
         {/* Left Sidebar */}
         <div className="profile-sidebar">
           <div className="sidebar-section">
-            <h3 className="sidebar-title">Progress</h3>
-            <div className="xp-progress">
-              <div className="xp-info">
-                <span className="xp-label">Level {userData.level}</span>
-                <span className="xp-count">{userData.xp.toLocaleString()} / {userData.nextLevelXp.toLocaleString()} XP</span>
-              </div>
-              <div className="xp-bar">
-                <div 
-                  className="xp-fill"
-                  style={{ width: `${xpPercentage}%` }}
-                ></div>
-              </div>
-              <div className="next-level">
-                {userData.nextLevelXp - userData.xp} XP to Level {userData.level + 1}
-              </div>
-            </div>
+            <h3 className="sidebar-title">About</h3>
+            <p className="bio-text">{userData.bio}</p>
           </div>
 
           <div className="sidebar-section">
@@ -172,27 +210,41 @@ const ProfilePage = () => {
           </div>
 
           <div className="sidebar-section">
-            <h3 className="sidebar-title">Quick Stats</h3>
+            <h3 className="sidebar-title">Stats</h3>
             <div className="quick-stats">
               <div className="stat-item">
-                <div className="stat-icon">🎮</div>
+                <div className="stat-icon">🎬</div>
                 <div className="stat-content">
-                  <div className="stat-number">{userData.stats.gamesPlayed}</div>
-                  <div className="stat-label">Games Played</div>
+                  <div className="stat-number">{userData.stats.moviesWatched}</div>
+                  <div className="stat-label">Movies</div>
                 </div>
               </div>
               <div className="stat-item">
-                <div className="stat-icon">⏱️</div>
+                <div className="stat-icon">📺</div>
                 <div className="stat-content">
-                  <div className="stat-number">{userData.stats.hoursPlayed}</div>
-                  <div className="stat-label">Hours Played</div>
+                  <div className="stat-number">{userData.stats.seriesWatched}</div>
+                  <div className="stat-label">Series</div>
                 </div>
               </div>
               <div className="stat-item">
-                <div className="stat-icon">🏆</div>
+                <div className="stat-icon">🎵</div>
                 <div className="stat-content">
-                  <div className="stat-number">{userData.stats.achievements}</div>
-                  <div className="stat-label">Achievements</div>
+                  <div className="stat-number">{userData.stats.musicListened}</div>
+                  <div className="stat-label">Music</div>
+                </div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-icon">📺</div>
+                <div className="stat-content">
+                  <div className="stat-number">{userData.stats.animeWatched}</div>
+                  <div className="stat-label">Anime</div>
+                </div>
+              </div>
+              <div className="stat-item">
+                <div className="stat-icon">❤️</div>
+                <div className="stat-content">
+                  <div className="stat-number">{userData.stats.wishlist}</div>
+                  <div className="stat-label">Wishlist</div>
                 </div>
               </div>
             </div>
@@ -219,17 +271,6 @@ const ProfilePage = () => {
           <div className="tab-content">
             {activeTab === 'overview' && (
               <div className="overview-tab">
-                {/* Bio Section */}
-                <div className="bio-section">
-                  <div className="section-header">
-                    <h3 className="section-title">About Me</h3>
-                    <button className="edit-section-btn" onClick={() => setIsEditing(true)}>
-                      <span className="edit-icon">✏️</span>
-                    </button>
-                  </div>
-                  <p className="bio-text">{userData.bio}</p>
-                </div>
-
                 {/* Recent Activity */}
                 <div className="activity-section">
                   <h3 className="section-title">Recent Activity</h3>
@@ -239,223 +280,52 @@ const ProfilePage = () => {
                         <div className="activity-icon">{activity.icon}</div>
                         <div className="activity-content">
                           <div className="activity-title">{activity.title}</div>
-                          {activity.game && (
-                            <div className="activity-game">{activity.game}</div>
-                          )}
                           <div className="activity-time">{activity.time}</div>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
+              </div>
+            )}
 
-                {/* Favorite Games */}
-                <div className="games-section">
-                  <div className="section-header">
-                    <h3 className="section-title">Favorite Games</h3>
-                    <Link to="/games" className="view-all-link">
-                      View All →
-                    </Link>
+            {activeTab === 'wishlist' && (
+              <div className="wishlist-tab">
+                <h2 className="tab-title">My Wishlist</h2>
+                <div className="wishlist-stats">
+                  <div className="stat-card">
+                    <div className="stat-value">{userData.stats.wishlist}</div>
+                    <div className="stat-label">Items in Wishlist</div>
                   </div>
-                  <div className="favorite-games">
-                    {userData.favoriteGames.map(game => (
-                      <div key={game.id} className="favorite-game">
-                        <img src={game.cover} alt={game.title} className="game-cover" />
-                        <div className="game-info">
-                          <h4 className="game-title">{game.title}</h4>
-                          <div className="game-meta">
-                            <span className="game-genre">{game.genre}</span>
-                            <span className="game-hours">{game.hours} hours</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                </div>
+                <div className="wishlist-actions">
+                  <Link to="/movies" className="browse-btn">Browse Movies</Link>
+                  <Link to="/series" className="browse-btn">Browse Series</Link>
+                  <Link to="/music" className="browse-btn">Browse Music</Link>
+                  <Link to="/anime" className="browse-btn">Browse Anime</Link>
                 </div>
               </div>
             )}
 
-            {activeTab === 'games' && (
-              <div className="games-tab">
-                <div className="games-header">
-                  <h2 className="tab-title">My Games Library</h2>
-                  <div className="games-filters">
-                    <button className="filter-btn active">All Games</button>
-                    <button className="filter-btn">Recently Played</button>
-                    <button className="filter-btn">Most Played</button>
-                    <button className="filter-btn">Installed</button>
-                  </div>
-                </div>
-                <div className="games-library">
-                  {userData.favoriteGames.map(game => (
-                    <div key={game.id} className="library-game">
-                      <img src={game.cover} alt={game.title} className="library-cover" />
-                      <div className="library-info">
-                        <h4 className="library-title">{game.title}</h4>
-                        <div className="library-meta">
-                          <span className="meta-item">{game.genre}</span>
-                          <span className="meta-item">{game.hours} hours</span>
-                        </div>
-                        <div className="library-actions">
-                          <button className="action-btn play-btn">
-                            <span className="btn-icon">▶</span>
-                            Play
-                          </button>
-                          <button className="action-btn details-btn">
-                            <span className="btn-icon">ℹ️</span>
-                            Details
-                          </button>
-                        </div>
+            {activeTab === 'activity' && (
+              <div className="activity-tab">
+                <h2 className="tab-title">Activity History</h2>
+                <div className="activity-timeline">
+                  {userData.recentActivity.map(activity => (
+                    <div key={activity.id} className="timeline-item">
+                      <div className="timeline-icon">{activity.icon}</div>
+                      <div className="timeline-content">
+                        <div className="timeline-title">{activity.title}</div>
+                        <div className="timeline-time">{activity.time}</div>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-
-            {activeTab === 'settings' && (
-              <div className="settings-tab">
-                <h2 className="tab-title">Account Settings</h2>
-                <div className="settings-sections">
-                  <div className="settings-section">
-                    <h3 className="settings-title">Profile Information</h3>
-                    <div className="settings-form">
-                      <div className="form-group">
-                        <label htmlFor="name">Display Name</label>
-                        <input
-                          type="text"
-                          id="name"
-                          name="name"
-                          value={editForm.name}
-                          onChange={handleInputChange}
-                          className="settings-input"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="email">Email Address</label>
-                        <input
-                          type="email"
-                          id="email"
-                          name="email"
-                          value={editForm.email}
-                          onChange={handleInputChange}
-                          className="settings-input"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="bio">Bio</label>
-                        <textarea
-                          id="bio"
-                          name="bio"
-                          value={editForm.bio}
-                          onChange={handleInputChange}
-                          className="settings-textarea"
-                          rows="4"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label htmlFor="location">Location</label>
-                        <input
-                          type="text"
-                          id="location"
-                          name="location"
-                          value={editForm.location}
-                          onChange={handleInputChange}
-                          className="settings-input"
-                        />
-                      </div>
-                      <div className="form-actions">
-                        <button className="save-btn" onClick={handleEditSubmit}>
-                          Save Changes
-                        </button>
-                        <button className="cancel-btn" onClick={() => setIsEditing(false)}>
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
-
-      {/* Edit Profile Modal */}
-      {isEditing && (
-        <div className="edit-modal">
-          <div className="modal-content">
-            <div className="modal-header">
-              <h2 className="modal-title">Edit Profile</h2>
-              <button className="modal-close" onClick={() => setIsEditing(false)}>
-                ✕
-              </button>
-            </div>
-            <form onSubmit={handleEditSubmit} className="edit-form">
-              <div className="form-grid">
-                <div className="form-group">
-                  <label htmlFor="edit-name">Display Name</label>
-                  <input
-                    type="text"
-                    id="edit-name"
-                    name="name"
-                    value={editForm.name}
-                    onChange={handleInputChange}
-                    className="form-input"
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="edit-email">Email Address</label>
-                  <input
-                    type="email"
-                    id="edit-email"
-                    name="email"
-                    value={editForm.email}
-                    onChange={handleInputChange}
-                    className="form-input"
-                    required
-                  />
-                </div>
-                <div className="form-group full-width">
-                  <label htmlFor="edit-bio">Bio</label>
-                  <textarea
-                    id="edit-bio"
-                    name="bio"
-                    value={editForm.bio}
-                    onChange={handleInputChange}
-                    className="form-textarea"
-                    rows="4"
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor="edit-location">Location</label>
-                  <input
-                    type="text"
-                    id="edit-location"
-                    name="location"
-                    value={editForm.location}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  />
-                </div>
-              </div>
-              <div className="form-actions">
-                <button type="submit" className="btn-primary">
-                  Save Changes
-                </button>
-                <button 
-                  type="button" 
-                  className="btn-secondary"
-                  onClick={() => setIsEditing(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

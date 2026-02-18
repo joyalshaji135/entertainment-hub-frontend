@@ -116,18 +116,6 @@ const Header = () => {
           ))}
           
           {/* Show profile link in mobile menu for logged-in users */}
-          {isAuthenticated && (
-            <Link
-              to="/profile"
-              className={`nav-item ${
-                location.pathname === '/profile' ? 'active' : ''
-              }`}
-              onClick={() => setIsMenuOpen(false)}
-            >
-              <span className="nav-icon">👤</span>
-              <span className="nav-label">Profile</span>
-            </Link>
-          )}
           
           {/* Show auth buttons in mobile menu for logged-out users */}
           {!isAuthenticated && (
@@ -182,10 +170,6 @@ const Header = () => {
                   <Link to="/watchlist" className="dropdown-item" onClick={() => setIsMenuOpen(false)}>
                     <span className="dropdown-icon">❤️</span>
                     Watchlist
-                  </Link>
-                  <Link to="/settings" className="dropdown-item" onClick={() => setIsMenuOpen(false)}>
-                    <span className="dropdown-icon">⚙️</span>
-                    Settings
                   </Link>
                   <div className="dropdown-divider"></div>
                   <button className="dropdown-item logout" onClick={handleLogout}>
